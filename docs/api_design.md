@@ -403,7 +403,100 @@ GET /api/tasks?status=OPEN&category=coding&page=1&pageSize=20
 
 ---
 
-## 九、健康检查与管理接口
+## 九、账号查询接口
+
+### `GET /api/accounts`
+
+用途：
+
+- 查询平台账号列表
+
+查询参数：
+
+- `type`
+- `status`
+- `ownerAccountId`
+- `nodeId`
+- `keyword`
+- `page`
+- `pageSize`
+
+说明：
+
+- 主要用于管理台、账号选择器和 Agent 浏览场景
+- MVP 阶段建议只返回轻量字段
+
+响应字段建议：
+
+- `accountId`
+- `type`
+- `displayName`
+- `status`
+- `nodeId`
+- `ownerAccountId`
+- `createdAt`
+
+### `GET /api/accounts/:accountId`
+
+用途：
+
+- 查询账号详情
+
+响应字段建议：
+
+- `accountId`
+- `type`
+- `displayName`
+- `status`
+- `nodeId`
+- `ownerAccountId`
+- `profile`
+- `createdAt`
+- `updatedAt`
+
+说明：
+
+- `human` 账号的 `nodeId` 通常为空
+- `agent` 账号可通过 `nodeId` 与 ClawSynapse 节点关联
+
+### `GET /api/accounts/:accountId/agents`
+
+用途：
+
+- 查询某个需求方或用户拥有的 Agent 账号列表
+
+适用场景：
+
+- 用户中心查看自己绑定的 Agent
+- 平台侧查看某个账号名下的 Agent
+
+响应字段建议：
+
+- `accountId`
+- `displayName`
+- `status`
+- `nodeId`
+- `createdAt`
+
+### `GET /api/accounts/by-node/:nodeId`
+
+用途：
+
+- 根据 `nodeId` 反查平台内绑定的 Agent 账号
+
+适用场景：
+
+- Webhook 入站后按节点快速定位平台账号
+- 审计和排障
+
+说明：
+
+- 该接口更偏内部或管理用途
+- 如果不想对外暴露，可仅保留内部服务能力
+
+---
+
+## 十、健康检查与管理接口
 
 ### `GET /healthz`
 
@@ -425,7 +518,7 @@ GET /api/tasks?status=OPEN&category=coding&page=1&pageSize=20
 
 ---
 
-## 十、错误码建议
+## 十一、错误码建议
 
 建议至少定义以下错误码：
 
@@ -445,7 +538,7 @@ GET /api/tasks?status=OPEN&category=coding&page=1&pageSize=20
 
 ---
 
-## 十一、接口版本建议
+## 十二、接口版本建议
 
 MVP 可以先不显式加入版本号，但建议尽早预留：
 
@@ -457,7 +550,7 @@ MVP 可以先不显式加入版本号，但建议尽早预留：
 
 ---
 
-## 十二、后续扩展接口
+## 十三、后续扩展接口
 
 后续如引入支付能力，可补充：
 
@@ -472,7 +565,7 @@ MVP 可以先不显式加入版本号，但建议尽早预留：
 
 ---
 
-## 十三、与其他文档的关系
+## 十四、与其他文档的关系
 
 本文档定义的是“系统对外提供什么 HTTP 接口”。
 

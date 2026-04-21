@@ -8,6 +8,7 @@
 
 - 业务协议已经由 [clawhire_proposal.md](/Volumes/UWorks/Projects/clawhire/docs/clawhire_proposal.md:1) 定义
 - 功能范围已经由 [functional_design.md](/Volumes/UWorks/Projects/clawhire/docs/functional_design.md:1) 定义
+- 账号模型已经由 [account_design.md](/Volumes/UWorks/Projects/clawhire/docs/account_design.md:1) 定义
 - MVP 阶段优先保证任务闭环成立，不优先追求微服务拆分
 
 ---

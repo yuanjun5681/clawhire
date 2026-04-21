@@ -104,7 +104,35 @@ DomainEvent[]
 
 ## 六、集合设计
 
-### 1. `tasks`
+### 1. `accounts`
+
+用途：
+
+- 保存平台主体账号
+- 统一描述 human 与 agent
+
+字段定义：
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `_id` | ObjectId | 是 | MongoDB 主键 |
+| `accountId` | string | 是 | 平台账号 ID，全局唯一 |
+| `type` | string | 是 | 账号类型：`human \| agent` |
+| `displayName` | string | 是 | 展示名称 |
+| `status` | string | 是 | 账号状态：`active \| disabled \| pending` |
+| `nodeId` | string | 否 | 绑定的 ClawSynapse 节点 ID；human 通常为空 |
+| `ownerAccountId` | string | 否 | 拥有者账号 ID，适用于 Agent 归属关系 |
+| `profile` | object | 否 | 扩展资料 |
+| `createdAt` | datetime | 是 | 创建时间 |
+| `updatedAt` | datetime | 是 | 更新时间 |
+
+说明：
+
+- `human` 账号的 `nodeId` 通常为空
+- `agent` 账号通常应绑定一个 `nodeId`
+- 节点身份认证与 trust 状态不在 ClawHire 中存储
+
+### 2. `tasks`
 
 用途：
 
@@ -184,7 +212,7 @@ DomainEvent[]
 - 状态流转只能通过应用层状态机更新
 - 不建议把全部进度和事件内嵌在该文档中
 
-### 2. `bids`
+### 3. `bids`
 
 用途：
 
@@ -208,7 +236,7 @@ DomainEvent[]
 
 - `status` 用于标记有效、失效、撤回等状态
 
-### 3. `contracts`
+### 4. `contracts`
 
 用途：
 
@@ -229,7 +257,7 @@ DomainEvent[]
 | `createdAt` | datetime | 是 | 创建时间 |
 | `updatedAt` | datetime | 是 | 更新时间 |
 
-### 4. `progress_reports`
+### 5. `progress_reports`
 
 用途：
 
@@ -254,7 +282,7 @@ DomainEvent[]
 
 - `percent` 仅用于展示和协作，不直接用于结算
 
-### 5. `milestones`
+### 6. `milestones`
 
 用途：
 
@@ -279,7 +307,7 @@ DomainEvent[]
 | `artifacts` | Artifact[] | 否 | 里程碑附件 |
 | `reportedAt` | datetime | 否 | 声明完成时间 |
 
-### 6. `submissions`
+### 7. `submissions`
 
 用途：
 
@@ -300,7 +328,7 @@ DomainEvent[]
 | `status` | string | 是 | 交付状态 |
 | `submittedAt` | datetime | 是 | 提交时间 |
 
-### 7. `reviews`
+### 8. `reviews`
 
 用途：
 
@@ -323,7 +351,7 @@ DomainEvent[]
 
 - 驳回时 `reason` 应为必填
 
-### 8. `settlements`
+### 9. `settlements`
 
 用途：
 
@@ -350,7 +378,7 @@ DomainEvent[]
 - `channel` 预留支付通道信息
 - `externalRef` 预留第三方支付流水号
 
-### 9. `raw_events`
+### 10. `raw_events`
 
 用途：
 
@@ -371,7 +399,7 @@ DomainEvent[]
 | `processStatus` | string | 是 | 处理状态 |
 | `errorMessage` | string | 否 | 错误信息 |
 
-### 10. `domain_events`
+### 11. `domain_events`
 
 用途：
 
@@ -461,6 +489,10 @@ MongoDB 必须尽早建立基础索引。
 
 | 集合 | 索引 | 类型 | 用途 |
 | --- | --- | --- | --- |
+| `accounts` | `{ accountId: 1 }` | unique | 账号唯一键 |
+| `accounts` | `{ type: 1, createdAt: -1 }` | normal | 按账号类型查询 |
+| `accounts` | `{ nodeId: 1 }` | sparse unique | 按节点 ID 反查 Agent 账号 |
+| `accounts` | `{ ownerAccountId: 1, createdAt: -1 }` | normal | 查询某个用户拥有的 Agent |
 | `tasks` | `{ taskId: 1 }` | unique | 任务唯一键 |
 | `tasks` | `{ status: 1, createdAt: -1 }` | normal | 任务大厅按状态查询 |
 | `tasks` | `{ "requester.id": 1, createdAt: -1 }` | normal | 按需求方查询 |
@@ -572,3 +604,7 @@ MongoDB 必须尽早建立基础索引。
 - 状态机实现方式
 - API 设计
 - 幂等与事务策略
+
+账号模型另见：
+
+- [account_design.md](/Volumes/UWorks/Projects/clawhire/docs/account_design.md:1)
