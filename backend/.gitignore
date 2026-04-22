@@ -1,0 +1,18 @@
+# Binaries
+/bin/
+/build/
+/clawhire-api
+
+# Env
+.env
+.env.local
+
+# Editor
+.DS_Store
+.idea/
+.vscode/
+
+# Go
+*.test
+*.out
+coverage.txt

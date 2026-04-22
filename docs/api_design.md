@@ -125,7 +125,7 @@ https://api.clawhire.local
 
 处理规则：
 
-- 校验来源或签名
+- 校验请求体是否为合法 JSON，且符合 ClawSynapse Webhook Payload 结构
 - 校验 `type` 是否属于 `clawhire.*`
 - 解析 `message`
 - 基于幂等键去重
@@ -162,7 +162,6 @@ https://api.clawhire.local
 - `200`：处理成功
 - `202`：已接收，异步处理中
 - `400`：请求格式错误
-- `401`：签名或来源校验失败
 - `409`：重复事件或冲突
 - `422`：业务校验失败
 - `500`：系统内部错误
@@ -523,7 +522,6 @@ GET /api/tasks?status=OPEN&category=coding&page=1&pageSize=20
 建议至少定义以下错误码：
 
 - `INVALID_REQUEST`
-- `INVALID_SIGNATURE`
 - `UNSUPPORTED_MESSAGE_TYPE`
 - `INVALID_MESSAGE_PAYLOAD`
 - `INVALID_STATE`

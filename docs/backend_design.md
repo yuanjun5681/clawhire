@@ -289,7 +289,7 @@ MongoDB 必须尽早建立基础索引。
 建议链路如下：
 
 1. 接收 Webhook 请求
-2. 校验签名或来源
+2. 解析并校验 Webhook JSON 请求体
 3. 解析 `type`
 4. 校验是否为 `clawhire.*`
 5. 解析 `message` 为具体业务 payload
