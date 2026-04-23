@@ -1,10 +1,17 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
+import { useIdentityStore } from '@/stores/identity'
 
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
     redirect: '/tasks',
+  },
+  {
+    path: '/login',
+    name: 'login',
+    component: () => import('@/pages/LoginPage.vue'),
+    meta: { title: '登录', public: true },
   },
   {
     path: '/',
@@ -51,6 +58,21 @@ const router = createRouter({
   scrollBehavior() {
     return { top: 0 }
   },
+})
+
+router.beforeEach((to) => {
+  const identity = useIdentityStore()
+  const isPublic = Boolean(to.meta?.public)
+  if (!identity.isLoggedIn && !isPublic) {
+    return {
+      path: '/login',
+      query: to.fullPath !== '/' ? { redirect: to.fullPath } : {},
+    }
+  }
+  if (identity.isLoggedIn && to.path === '/login') {
+    return { path: '/tasks' }
+  }
+  return true
 })
 
 router.afterEach((to) => {
