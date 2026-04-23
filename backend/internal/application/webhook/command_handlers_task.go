@@ -2,13 +2,10 @@ package webhook
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	appcmd "github.com/yuanjun5681/clawhire/backend/internal/application/command"
-	"github.com/yuanjun5681/clawhire/backend/internal/domain/bid"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/contract"
-	"github.com/yuanjun5681/clawhire/backend/internal/domain/shared"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/task"
 	"github.com/yuanjun5681/clawhire/backend/internal/protocol/clawhire"
 	"github.com/yuanjun5681/clawhire/backend/internal/protocol/clawsynapse"
@@ -35,63 +32,13 @@ func (d *CommandDispatcher) handleTaskAwarded(ctx context.Context, env *clawsyna
 	if err := decodeMessage(env, &payload); err != nil {
 		return err
 	}
-	if err := validateAwardTask(payload); err != nil {
-		return err
-	}
-	t, err := d.tasks.FindByID(ctx, payload.TaskID)
-	if err != nil {
-		return toAPIError("find task", err)
-	}
-	next, _, err := d.sm.Transit(t.Status, task.ActionAwardTask)
-	if err != nil {
-		return apierr.Wrap(apierr.CodeInvalidState, "award task not allowed", err)
-	}
-	if current, err := d.contracts.FindActiveByTask(ctx, payload.TaskID); err == nil {
-		return apierr.New(apierr.CodeInvalidState, fmt.Sprintf("task already has active contract %s", current.ContractID))
-	} else if err != contract.ErrContractNotFound {
-		return toAPIError("find active contract", err)
-	}
-	now := d.now().UTC()
-	item := &contract.Contract{
-		ContractID:   payload.ContractID,
-		TaskID:       payload.TaskID,
-		Requester:    t.Requester,
-		Executor:     payload.Executor,
-		AgreedReward: shared.Money{Amount: payload.AgreedReward.Amount, Currency: strings.TrimSpace(payload.AgreedReward.Currency)},
-		Status:       contract.StatusActive,
-		CreatedAt:    now,
-		UpdatedAt:    now,
-	}
-	if err := d.contracts.Insert(ctx, item); err != nil {
-		if err == contract.ErrActiveContractExists {
-			return apierr.New(apierr.CodeInvalidState, "task already has active contract")
-		}
-		return apierr.Wrap(apierr.CodeInternalError, "insert contract", err)
-	}
-	if err := d.tasks.UpdateStatus(ctx, payload.TaskID, t.Status, next, now); err != nil {
-		return toAPIError("update task status", err)
-	}
-	if err := d.tasks.UpdateAssignment(ctx, payload.TaskID, payload.Executor, payload.ContractID, now); err != nil {
-		return toAPIError("update assignment", err)
-	}
-	if bids, _, err := d.bids.ListByTask(ctx, payload.TaskID, 1, 200); err == nil {
-		awardedBidID := ""
-		for _, item := range bids {
-			if item.Executor.ID == payload.Executor.ID && item.Status == bid.StatusActive {
-				awardedBidID = item.BidID
-				break
-			}
-		}
-		if awardedBidID != "" {
-			if err := d.bids.MarkAwarded(ctx, awardedBidID); err != nil {
-				return toAPIError("mark bid awarded", err)
-			}
-		}
-		if err := d.bids.InvalidateOthers(ctx, payload.TaskID, awardedBidID); err != nil {
-			return apierr.Wrap(apierr.CodeInternalError, "invalidate other bids", err)
-		}
-	}
-	return d.recordDomainEvent(ctx, env, "task", payload.TaskID, env.Type, payload)
+	return d.commands.AwardTask(ctx, appcmd.AwardTaskCommand{
+		Payload: payload,
+		Event: &appcmd.EventMeta{
+			ID:   DeriveEventKey(env),
+			Type: env.Type,
+		},
+	})
 }
 
 func (d *CommandDispatcher) handleTaskStarted(ctx context.Context, env *clawsynapse.Envelope) error {

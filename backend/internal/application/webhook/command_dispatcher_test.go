@@ -576,11 +576,13 @@ func TestCommandDispatcher_MinimalLifecycle(t *testing.T) {
 	}
 }
 
-func TestCommandDispatcher_PostTaskDefaultsReviewerToRequester(t *testing.T) {
+func TestCommandDispatcher_PostTaskUsesEnvelopeEventForDomainEvent(t *testing.T) {
 	taskRepo := newFakeTaskRepo()
+	domainEventRepo := &fakeDomainEventRepo{}
 	dispatcher := NewCommandDispatcher(CommandDispatcherOptions{
-		Tasks: taskRepo,
-		Now:   fixedNow(time.Date(2026, 4, 23, 11, 0, 0, 0, time.UTC)),
+		Tasks:      taskRepo,
+		DomainEvts: domainEventRepo,
+		Now:        fixedNow(time.Date(2026, 4, 23, 11, 0, 0, 0, time.UTC)),
 	})
 	env := &clawsynapse.Envelope{
 		Type: "clawhire.task.posted",
@@ -603,12 +605,15 @@ func TestCommandDispatcher_PostTaskDefaultsReviewerToRequester(t *testing.T) {
 	if _, err := dispatcher.Dispatch(context.Background(), env); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
-	got, err := taskRepo.FindByID(context.Background(), "task_001")
-	if err != nil {
+	if _, err := taskRepo.FindByID(context.Background(), "task_001"); err != nil {
 		t.Fatalf("find task: %v", err)
 	}
-	if got.Reviewer == nil || got.Reviewer.ID != got.Requester.ID || got.Reviewer.Kind != got.Requester.Kind {
-		t.Fatalf("reviewer should default to requester, got %+v", got.Reviewer)
+	if len(domainEventRepo.items) != 1 {
+		t.Fatalf("domain event count = %d, want 1", len(domainEventRepo.items))
+	}
+	got := domainEventRepo.items[0]
+	if got.EventID != "evt_post_defaults" || got.EventType != "clawhire.task.posted" || got.AggregateID != "task_001" {
+		t.Fatalf("unexpected domain event: %+v", got)
 	}
 }
 
@@ -665,37 +670,7 @@ func TestCommandDispatcher_UnknownKnownTypeGuard(t *testing.T) {
 	}
 }
 
-func TestCommandDispatcher_AwardWithoutTaskFails(t *testing.T) {
-	dispatcher := NewCommandDispatcher(CommandDispatcherOptions{
-		Tasks:     newFakeTaskRepo(),
-		Bids:      newFakeBidRepo(),
-		Contracts: newFakeContractRepo(),
-		Now:       fixedNow(time.Date(2026, 4, 23, 13, 0, 0, 0, time.UTC)),
-	})
-	env := &clawsynapse.Envelope{
-		Type: "clawhire.task.awarded",
-		Message: mustJSON(map[string]interface{}{
-			"taskId":     "missing",
-			"contractId": "contract_001",
-			"executor": map[string]interface{}{
-				"id":   "agent_007",
-				"kind": "agent",
-			},
-			"agreedReward": map[string]interface{}{
-				"amount":   260,
-				"currency": "USD",
-			},
-		}),
-		Metadata: map[string]interface{}{"eventId": "evt_missing_task"},
-	}
-	_, err := dispatcher.Dispatch(context.Background(), env)
-	ae, ok := apierr.As(err)
-	if err == nil || !ok || ae.Code != apierr.CodeNotFound {
-		t.Fatalf("expected not found error, got %v", err)
-	}
-}
-
-func TestCommandDispatcher_AwardWithExistingActiveContractFails(t *testing.T) {
+func TestCommandDispatcher_AwardTaskUsesEnvelopeEventForDomainEvent(t *testing.T) {
 	taskRepo := &fakeTaskRepo{items: map[string]*task.Task{
 		"task_001": {
 			TaskID:    "task_001",
@@ -703,17 +678,15 @@ func TestCommandDispatcher_AwardWithExistingActiveContractFails(t *testing.T) {
 			Requester: shared.Actor{ID: "user_001", Kind: shared.ActorKindUser},
 		},
 	}}
+	bidRepo := newFakeBidRepo()
 	contractRepo := newFakeContractRepo()
-	contractRepo.items["contract_existing"] = &contract.Contract{
-		ContractID: "contract_existing",
-		TaskID:     "task_001",
-		Status:     contract.StatusActive,
-	}
+	domainEventRepo := &fakeDomainEventRepo{}
 	dispatcher := NewCommandDispatcher(CommandDispatcherOptions{
-		Tasks:     taskRepo,
-		Bids:      newFakeBidRepo(),
-		Contracts: contractRepo,
-		Now:       fixedNow(time.Date(2026, 4, 23, 13, 30, 0, 0, time.UTC)),
+		Tasks:      taskRepo,
+		Bids:       bidRepo,
+		Contracts:  contractRepo,
+		DomainEvts: domainEventRepo,
+		Now:        fixedNow(time.Date(2026, 4, 23, 13, 30, 0, 0, time.UTC)),
 	})
 	env := &clawsynapse.Envelope{
 		Type: "clawhire.task.awarded",
@@ -729,28 +702,37 @@ func TestCommandDispatcher_AwardWithExistingActiveContractFails(t *testing.T) {
 				"currency": "USD",
 			},
 		}),
-		Metadata: map[string]interface{}{"eventId": "evt_active_contract"},
+		Metadata: map[string]interface{}{"eventId": "evt_award"},
 	}
-	_, err := dispatcher.Dispatch(context.Background(), env)
-	ae, ok := apierr.As(err)
-	if err == nil || !ok || ae.Code != apierr.CodeInvalidState {
-		t.Fatalf("expected invalid state, got %v", err)
+	if _, err := dispatcher.Dispatch(context.Background(), env); err != nil {
+		t.Fatalf("dispatch: %v", err)
 	}
-	if len(contractRepo.items) != 1 {
-		t.Fatalf("contract count = %d, want 1", len(contractRepo.items))
+	if _, err := contractRepo.FindByID(context.Background(), "contract_002"); err != nil {
+		t.Fatalf("find contract: %v", err)
+	}
+	if len(domainEventRepo.items) != 1 {
+		t.Fatalf("domain event count = %d, want 1", len(domainEventRepo.items))
+	}
+	got := domainEventRepo.items[0]
+	if got.EventID != "evt_award" || got.EventType != "clawhire.task.awarded" || got.AggregateID != "task_001" {
+		t.Fatalf("unexpected domain event: %+v", got)
 	}
 }
 
-func TestCommandDispatcher_BidOnAwardedTaskFails(t *testing.T) {
+func TestCommandDispatcher_BidPlacedUsesEnvelopeEventForDomainEvent(t *testing.T) {
+	taskRepo := &fakeTaskRepo{items: map[string]*task.Task{
+		"task_001": {
+			TaskID: "task_001",
+			Status: task.StatusOpen,
+		},
+	}}
+	bidRepo := newFakeBidRepo()
+	domainEventRepo := &fakeDomainEventRepo{}
 	dispatcher := NewCommandDispatcher(CommandDispatcherOptions{
-		Tasks: &fakeTaskRepo{items: map[string]*task.Task{
-			"task_001": {
-				TaskID: "task_001",
-				Status: task.StatusAwarded,
-			},
-		}},
-		Bids: newFakeBidRepo(),
-		Now:  fixedNow(time.Date(2026, 4, 23, 14, 0, 0, 0, time.UTC)),
+		Tasks:      taskRepo,
+		Bids:       bidRepo,
+		DomainEvts: domainEventRepo,
+		Now:        fixedNow(time.Date(2026, 4, 23, 14, 0, 0, 0, time.UTC)),
 	})
 	env := &clawsynapse.Envelope{
 		Type: "clawhire.bid.placed",
@@ -766,29 +748,30 @@ func TestCommandDispatcher_BidOnAwardedTaskFails(t *testing.T) {
 		}),
 		Metadata: map[string]interface{}{"eventId": "evt_bid_invalid"},
 	}
-	_, err := dispatcher.Dispatch(context.Background(), env)
-	ae, ok := apierr.As(err)
-	if err == nil || !ok || ae.Code != apierr.CodeInvalidState {
-		t.Fatalf("expected invalid state, got %v", err)
+	if _, err := dispatcher.Dispatch(context.Background(), env); err != nil {
+		t.Fatalf("dispatch: %v", err)
+	}
+	if _, err := bidRepo.FindByID(context.Background(), "bid_001"); err != nil {
+		t.Fatalf("find bid: %v", err)
+	}
+	if len(domainEventRepo.items) != 1 {
+		t.Fatalf("domain event count = %d, want 1", len(domainEventRepo.items))
+	}
+	got := domainEventRepo.items[0]
+	if got.EventID != "evt_bid_invalid" || got.EventType != "clawhire.bid.placed" || got.AggregateID != "task_001" {
+		t.Fatalf("unexpected domain event: %+v", got)
 	}
 }
 
-func TestCommandDispatcher_RejectSubmissionAndRestart(t *testing.T) {
+func TestCommandDispatcher_StartTaskFromRejectedState(t *testing.T) {
 	now := fixedNow(time.Date(2026, 4, 23, 15, 0, 0, 0, time.UTC))
 	taskRepo := &fakeTaskRepo{items: map[string]*task.Task{
 		"task_001": {
 			TaskID:            "task_001",
-			Status:            task.StatusSubmitted,
+			Status:            task.StatusRejected,
 			CurrentContractID: "contract_001",
 		},
 	}}
-	submissionRepo := newFakeSubmissionRepo()
-	submissionRepo.items["submission_001"] = &submission.Submission{
-		SubmissionID: "submission_001",
-		TaskID:       "task_001",
-		Status:       submission.StatusSubmitted,
-		SubmittedAt:  time.Date(2026, 4, 23, 14, 0, 0, 0, time.UTC),
-	}
 	contractRepo := newFakeContractRepo()
 	contractRepo.items["contract_001"] = &contract.Contract{
 		ContractID: "contract_001",
@@ -796,38 +779,10 @@ func TestCommandDispatcher_RejectSubmissionAndRestart(t *testing.T) {
 		Status:     contract.StatusActive,
 	}
 	dispatcher := NewCommandDispatcher(CommandDispatcherOptions{
-		Tasks:       taskRepo,
-		Submissions: submissionRepo,
-		Reviews:     newFakeReviewRepo(),
-		Contracts:   contractRepo,
-		Now:         now,
+		Tasks:     taskRepo,
+		Contracts: contractRepo,
+		Now:       now,
 	})
-
-	rejectEnv := &clawsynapse.Envelope{
-		Type: "clawhire.submission.rejected",
-		Message: mustJSON(map[string]interface{}{
-			"taskId":       "task_001",
-			"submissionId": "submission_001",
-			"reason":       "Missing mobile adaptation",
-			"rejectedBy": map[string]interface{}{
-				"id":   "user_001",
-				"kind": "user",
-			},
-		}),
-		Metadata: map[string]interface{}{"eventId": "evt_reject"},
-	}
-	if _, err := dispatcher.Dispatch(context.Background(), rejectEnv); err != nil {
-		t.Fatalf("reject: %v", err)
-	}
-	gotTask, _ := taskRepo.FindByID(context.Background(), "task_001")
-	if gotTask.Status != task.StatusRejected {
-		t.Fatalf("task status = %s, want %s", gotTask.Status, task.StatusRejected)
-	}
-	gotSubmission, _ := submissionRepo.FindByID(context.Background(), "submission_001")
-	if gotSubmission.Status != submission.StatusRejected {
-		t.Fatalf("submission status = %s, want %s", gotSubmission.Status, submission.StatusRejected)
-	}
-
 	startEnv := &clawsynapse.Envelope{
 		Type: "clawhire.task.started",
 		Message: mustJSON(map[string]interface{}{
@@ -839,7 +794,7 @@ func TestCommandDispatcher_RejectSubmissionAndRestart(t *testing.T) {
 	if _, err := dispatcher.Dispatch(context.Background(), startEnv); err != nil {
 		t.Fatalf("restart: %v", err)
 	}
-	gotTask, _ = taskRepo.FindByID(context.Background(), "task_001")
+	gotTask, _ := taskRepo.FindByID(context.Background(), "task_001")
 	if gotTask.Status != task.StatusInProgress {
 		t.Fatalf("task status after restart = %s, want %s", gotTask.Status, task.StatusInProgress)
 	}

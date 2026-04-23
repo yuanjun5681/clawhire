@@ -65,9 +65,12 @@ func main() {
 
 	// --- 应用层装配 ---
 	commandSvc := appcmd.NewService(appcmd.Options{
-		Tasks:      taskRepo,
-		Bids:       bidRepo,
-		DomainEvts: domainEventRepo,
+		Tasks:       taskRepo,
+		Bids:        bidRepo,
+		Contracts:   contractRepo,
+		Submissions: submissionRepo,
+		Reviews:     reviewRepo,
+		DomainEvts:  domainEventRepo,
 	})
 	dispatcher := webhook.NewCommandDispatcher(webhook.CommandDispatcherOptions{
 		Tasks:       taskRepo,

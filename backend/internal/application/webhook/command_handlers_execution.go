@@ -7,7 +7,6 @@ import (
 	appcmd "github.com/yuanjun5681/clawhire/backend/internal/application/command"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/milestone"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/progress"
-	"github.com/yuanjun5681/clawhire/backend/internal/domain/submission"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/task"
 	"github.com/yuanjun5681/clawhire/backend/internal/protocol/clawhire"
 	"github.com/yuanjun5681/clawhire/backend/internal/protocol/clawsynapse"
@@ -106,34 +105,11 @@ func (d *CommandDispatcher) handleSubmissionCreated(ctx context.Context, env *cl
 	if err := decodeMessage(env, &payload); err != nil {
 		return err
 	}
-	if err := validateSubmission(payload); err != nil {
-		return err
-	}
-	t, err := d.tasks.FindByID(ctx, payload.TaskID)
-	if err != nil {
-		return toAPIError("find task", err)
-	}
-	next, _, err := d.sm.Transit(t.Status, task.ActionCreateSubmission)
-	if err != nil {
-		return apierr.Wrap(apierr.CodeInvalidState, "create submission not allowed", err)
-	}
-	submittedAt := d.now().UTC()
-	item := &submission.Submission{
-		SubmissionID: payload.SubmissionID,
-		TaskID:       payload.TaskID,
-		ContractID:   firstNonEmpty(payload.ContractID, t.CurrentContractID),
-		Executor:     payload.Executor,
-		Summary:      strings.TrimSpace(payload.Summary),
-		Artifacts:    payload.Artifacts,
-		Evidence:     normalizeEvidence(payload.Evidence),
-		Status:       submission.StatusSubmitted,
-		SubmittedAt:  submittedAt,
-	}
-	if err := d.submissions.Insert(ctx, item); err != nil {
-		return apierr.Wrap(apierr.CodeInternalError, "insert submission", err)
-	}
-	if err := d.tasks.UpdateStatus(ctx, payload.TaskID, t.Status, next, submittedAt); err != nil {
-		return toAPIError("update task status", err)
-	}
-	return d.recordDomainEvent(ctx, env, "task", payload.TaskID, env.Type, payload)
+	return d.commands.CreateSubmission(ctx, appcmd.CreateSubmissionCommand{
+		Payload: payload,
+		Event: &appcmd.EventMeta{
+			ID:   DeriveEventKey(env),
+			Type: env.Type,
+		},
+	})
 }

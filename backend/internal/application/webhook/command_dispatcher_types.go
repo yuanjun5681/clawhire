@@ -63,11 +63,14 @@ func NewCommandDispatcher(opt CommandDispatcherOptions) *CommandDispatcher {
 	commands := opt.Commands
 	if commands == nil {
 		commands = appcmd.NewService(appcmd.Options{
-			Tasks:      opt.Tasks,
-			Bids:       opt.Bids,
-			DomainEvts: opt.DomainEvts,
-			StateMach:  sm,
-			Now:        appcmd.Now(now),
+			Tasks:       opt.Tasks,
+			Bids:        opt.Bids,
+			Contracts:   opt.Contracts,
+			Submissions: opt.Submissions,
+			Reviews:     opt.Reviews,
+			DomainEvts:  opt.DomainEvts,
+			StateMach:   sm,
+			Now:         appcmd.Now(now),
 		})
 	}
 

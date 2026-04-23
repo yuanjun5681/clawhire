@@ -55,3 +55,46 @@ func validatePlaceBid(p clawhire.PlaceBidPayload) error {
 	}
 	return nil
 }
+
+func validateAwardTask(p clawhire.AwardTaskPayload) error {
+	if strings.TrimSpace(p.TaskID) == "" || strings.TrimSpace(p.ContractID) == "" {
+		return apierr.New(apierr.CodeInvalidMessagePayload, "taskId and contractId are required")
+	}
+	if err := validateActor(p.Executor, "executor"); err != nil {
+		return err
+	}
+	if strings.TrimSpace(p.AgreedReward.Currency) == "" {
+		return apierr.New(apierr.CodeInvalidMessagePayload, "agreedReward.currency is required")
+	}
+	return nil
+}
+
+func validateSubmission(p clawhire.CreateSubmissionPayload) error {
+	if strings.TrimSpace(p.TaskID) == "" || strings.TrimSpace(p.SubmissionID) == "" {
+		return apierr.New(apierr.CodeInvalidMessagePayload, "taskId and submissionId are required")
+	}
+	if strings.TrimSpace(p.Summary) == "" {
+		return apierr.New(apierr.CodeInvalidMessagePayload, "summary is required")
+	}
+	if len(p.Artifacts) == 0 {
+		return apierr.New(apierr.CodeInvalidMessagePayload, "artifacts are required")
+	}
+	return validateActor(p.Executor, "executor")
+}
+
+func validateAcceptSubmission(p clawhire.AcceptSubmissionPayload) error {
+	if strings.TrimSpace(p.TaskID) == "" || strings.TrimSpace(p.SubmissionID) == "" {
+		return apierr.New(apierr.CodeInvalidMessagePayload, "taskId and submissionId are required")
+	}
+	return validateActor(p.AcceptedBy, "acceptedBy")
+}
+
+func validateRejectSubmission(p clawhire.RejectSubmissionPayload) error {
+	if strings.TrimSpace(p.TaskID) == "" || strings.TrimSpace(p.SubmissionID) == "" {
+		return apierr.New(apierr.CodeInvalidMessagePayload, "taskId and submissionId are required")
+	}
+	if strings.TrimSpace(p.Reason) == "" {
+		return apierr.New(apierr.CodeInvalidMessagePayload, "reason is required")
+	}
+	return validateActor(p.RejectedBy, "rejectedBy")
+}

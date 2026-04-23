@@ -6,7 +6,10 @@ import (
 	"time"
 
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/bid"
+	"github.com/yuanjun5681/clawhire/backend/internal/domain/contract"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/event"
+	"github.com/yuanjun5681/clawhire/backend/internal/domain/review"
+	"github.com/yuanjun5681/clawhire/backend/internal/domain/submission"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/task"
 	"github.com/yuanjun5681/clawhire/backend/internal/protocol/clawhire"
 	"github.com/yuanjun5681/clawhire/backend/internal/shared/apierr"
@@ -20,19 +23,25 @@ type EventMeta struct {
 }
 
 type Service struct {
-	tasks      task.Repository
-	bids       bid.Repository
-	domainEvts event.DomainEventRepository
-	sm         task.StateMachine
-	now        Now
+	tasks       task.Repository
+	bids        bid.Repository
+	contracts   contract.Repository
+	submissions submission.Repository
+	reviews     review.Repository
+	domainEvts  event.DomainEventRepository
+	sm          task.StateMachine
+	now         Now
 }
 
 type Options struct {
-	Tasks      task.Repository
-	Bids       bid.Repository
-	DomainEvts event.DomainEventRepository
-	StateMach  task.StateMachine
-	Now        Now
+	Tasks       task.Repository
+	Bids        bid.Repository
+	Contracts   contract.Repository
+	Submissions submission.Repository
+	Reviews     review.Repository
+	DomainEvts  event.DomainEventRepository
+	StateMach   task.StateMachine
+	Now         Now
 }
 
 type PostTaskCommand struct {
@@ -56,6 +65,26 @@ type PlaceBidResult struct {
 	EventID string `json:"eventId,omitempty"`
 }
 
+type AwardTaskCommand struct {
+	Payload clawhire.AwardTaskPayload
+	Event   *EventMeta
+}
+
+type CreateSubmissionCommand struct {
+	Payload clawhire.CreateSubmissionPayload
+	Event   *EventMeta
+}
+
+type AcceptSubmissionCommand struct {
+	Payload clawhire.AcceptSubmissionPayload
+	Event   *EventMeta
+}
+
+type RejectSubmissionCommand struct {
+	Payload clawhire.RejectSubmissionPayload
+	Event   *EventMeta
+}
+
 func NewService(opt Options) *Service {
 	now := opt.Now
 	if now == nil {
@@ -66,11 +95,14 @@ func NewService(opt Options) *Service {
 		sm = task.NewStateMachine()
 	}
 	return &Service{
-		tasks:      opt.Tasks,
-		bids:       opt.Bids,
-		domainEvts: opt.DomainEvts,
-		sm:         sm,
-		now:        now,
+		tasks:       opt.Tasks,
+		bids:        opt.Bids,
+		contracts:   opt.Contracts,
+		submissions: opt.Submissions,
+		reviews:     opt.Reviews,
+		domainEvts:  opt.DomainEvts,
+		sm:          sm,
+		now:         now,
 	}
 }
 
