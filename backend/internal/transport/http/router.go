@@ -28,6 +28,10 @@ func RegisterRoutes(e *gin.Engine, d Deps) {
 	if d.Write != nil {
 		api.POST("/tasks", d.Write.CreateTask)
 		api.POST("/tasks/:taskId/bids", d.Write.CreateBid)
+		api.POST("/tasks/:taskId/award", d.Write.AwardTask)
+		api.POST("/tasks/:taskId/submissions", d.Write.CreateSubmission)
+		api.POST("/tasks/:taskId/accept", d.Write.AcceptSubmission)
+		api.POST("/tasks/:taskId/reject", d.Write.RejectSubmission)
 	}
 	if d.Query != nil {
 		api.GET("/tasks", d.Query.ListTasks)

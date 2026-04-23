@@ -46,6 +46,43 @@ type createBidRequest struct {
 	Proposal string  `json:"proposal,omitempty"`
 }
 
+type awardTaskRequest struct {
+	ContractID   string          `json:"contractId"`
+	ExecutorID   string          `json:"executorId"`
+	AgreedReward clawhire.Reward `json:"agreedReward"`
+}
+
+type createSubmissionRequest struct {
+	SubmissionID string             `json:"submissionId"`
+	ContractID   string             `json:"contractId,omitempty"`
+	Artifacts    []shared.Artifact  `json:"artifacts"`
+	Summary      string             `json:"summary"`
+	Evidence     *clawhire.Evidence `json:"evidence,omitempty"`
+}
+
+type acceptSubmissionRequest struct {
+	SubmissionID string     `json:"submissionId"`
+	AcceptedAt   *time.Time `json:"acceptedAt,omitempty"`
+}
+
+type rejectSubmissionRequest struct {
+	SubmissionID string     `json:"submissionId"`
+	Reason       string     `json:"reason"`
+	RejectedAt   *time.Time `json:"rejectedAt,omitempty"`
+}
+
+type awardTaskResponse struct {
+	TaskID     string `json:"taskId"`
+	ContractID string `json:"contractId"`
+	EventID    string `json:"eventId,omitempty"`
+}
+
+type submissionResponse struct {
+	TaskID       string `json:"taskId"`
+	SubmissionID string `json:"submissionId"`
+	EventID      string `json:"eventId,omitempty"`
+}
+
 func (h *Write) CreateTask(c *gin.Context) {
 	var req createTaskRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -60,7 +97,7 @@ func (h *Write) CreateTask(c *gin.Context) {
 
 	var reviewer *shared.Actor
 	if rid := strings.TrimSpace(req.ReviewerID); rid != "" {
-		reviewer, err = h.loadReviewer(c, rid)
+		reviewer, err = h.loadActor(c, rid, "reviewer")
 		if err != nil {
 			response.FailErr(c, err)
 			return
@@ -126,6 +163,147 @@ func (h *Write) CreateBid(c *gin.Context) {
 	c.JSON(http.StatusCreated, response.Success{Success: true, Data: res})
 }
 
+func (h *Write) AwardTask(c *gin.Context) {
+	var req awardTaskRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, http.StatusBadRequest, apierr.CodeInvalidRequest, "invalid JSON body")
+		return
+	}
+	if _, err := h.currentHumanActor(c); err != nil {
+		response.FailErr(c, err)
+		return
+	}
+
+	executor, err := h.loadActor(c, strings.TrimSpace(req.ExecutorID), "executor")
+	if err != nil {
+		response.FailErr(c, err)
+		return
+	}
+
+	taskID := strings.TrimSpace(c.Param("taskId"))
+	event := h.httpEvent(c, "clawhire.task.awarded", fmt.Sprintf("%s:%s", taskID, req.ContractID))
+	if err := h.commands.AwardTask(c.Request.Context(), appcmd.AwardTaskCommand{
+		Payload: clawhire.AwardTaskPayload{
+			TaskID:       taskID,
+			ContractID:   strings.TrimSpace(req.ContractID),
+			Executor:     *executor,
+			AgreedReward: req.AgreedReward,
+		},
+		Event: event,
+	}); err != nil {
+		response.FailErr(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, response.Success{Success: true, Data: awardTaskResponse{
+		TaskID:     taskID,
+		ContractID: strings.TrimSpace(req.ContractID),
+		EventID:    eventID(event),
+	}})
+}
+
+func (h *Write) CreateSubmission(c *gin.Context) {
+	var req createSubmissionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, http.StatusBadRequest, apierr.CodeInvalidRequest, "invalid JSON body")
+		return
+	}
+	actor, err := h.currentHumanActor(c)
+	if err != nil {
+		response.FailErr(c, err)
+		return
+	}
+
+	taskID := strings.TrimSpace(c.Param("taskId"))
+	event := h.httpEvent(c, "clawhire.submission.created", fmt.Sprintf("%s:%s", taskID, req.SubmissionID))
+	if err := h.commands.CreateSubmission(c.Request.Context(), appcmd.CreateSubmissionCommand{
+		Payload: clawhire.CreateSubmissionPayload{
+			TaskID:       taskID,
+			SubmissionID: strings.TrimSpace(req.SubmissionID),
+			ContractID:   strings.TrimSpace(req.ContractID),
+			Executor:     actor,
+			Artifacts:    req.Artifacts,
+			Summary:      req.Summary,
+			Evidence:     req.Evidence,
+		},
+		Event: event,
+	}); err != nil {
+		response.FailErr(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, response.Success{Success: true, Data: submissionResponse{
+		TaskID:       taskID,
+		SubmissionID: strings.TrimSpace(req.SubmissionID),
+		EventID:      eventID(event),
+	}})
+}
+
+func (h *Write) AcceptSubmission(c *gin.Context) {
+	var req acceptSubmissionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, http.StatusBadRequest, apierr.CodeInvalidRequest, "invalid JSON body")
+		return
+	}
+	actor, err := h.currentHumanActor(c)
+	if err != nil {
+		response.FailErr(c, err)
+		return
+	}
+
+	taskID := strings.TrimSpace(c.Param("taskId"))
+	event := h.httpEvent(c, "clawhire.submission.accepted", fmt.Sprintf("%s:%s", taskID, req.SubmissionID))
+	if err := h.commands.AcceptSubmission(c.Request.Context(), appcmd.AcceptSubmissionCommand{
+		Payload: clawhire.AcceptSubmissionPayload{
+			TaskID:       taskID,
+			SubmissionID: strings.TrimSpace(req.SubmissionID),
+			AcceptedBy:   actor,
+			AcceptedAt:   req.AcceptedAt,
+		},
+		Event: event,
+	}); err != nil {
+		response.FailErr(c, err)
+		return
+	}
+	response.OK(c, submissionResponse{
+		TaskID:       taskID,
+		SubmissionID: strings.TrimSpace(req.SubmissionID),
+		EventID:      eventID(event),
+	})
+}
+
+func (h *Write) RejectSubmission(c *gin.Context) {
+	var req rejectSubmissionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, http.StatusBadRequest, apierr.CodeInvalidRequest, "invalid JSON body")
+		return
+	}
+	actor, err := h.currentHumanActor(c)
+	if err != nil {
+		response.FailErr(c, err)
+		return
+	}
+
+	taskID := strings.TrimSpace(c.Param("taskId"))
+	event := h.httpEvent(c, "clawhire.submission.rejected", fmt.Sprintf("%s:%s", taskID, req.SubmissionID))
+	if err := h.commands.RejectSubmission(c.Request.Context(), appcmd.RejectSubmissionCommand{
+		Payload: clawhire.RejectSubmissionPayload{
+			TaskID:       taskID,
+			SubmissionID: strings.TrimSpace(req.SubmissionID),
+			RejectedBy:   actor,
+			Reason:       req.Reason,
+			RejectedAt:   req.RejectedAt,
+		},
+		Event: event,
+	}); err != nil {
+		response.FailErr(c, err)
+		return
+	}
+	response.OK(c, submissionResponse{
+		TaskID:       taskID,
+		SubmissionID: strings.TrimSpace(req.SubmissionID),
+		EventID:      eventID(event),
+	})
+}
+
 func (h *Write) currentHumanActor(c *gin.Context) (shared.Actor, error) {
 	accountID := strings.TrimSpace(c.GetHeader(headerAccountID))
 	if accountID == "" {
@@ -151,13 +329,13 @@ func (h *Write) currentHumanActor(c *gin.Context) (shared.Actor, error) {
 	}, nil
 }
 
-func (h *Write) loadReviewer(c *gin.Context, reviewerID string) (*shared.Actor, error) {
-	acc, err := h.accounts.FindByID(c.Request.Context(), reviewerID)
+func (h *Write) loadActor(c *gin.Context, accountID string, field string) (*shared.Actor, error) {
+	acc, err := h.accounts.FindByID(c.Request.Context(), accountID)
 	if err != nil {
 		if err == account.ErrAccountNotFound {
-			return nil, apierr.Wrap(apierr.CodeNotFound, "find reviewer account", err)
+			return nil, apierr.Wrap(apierr.CodeNotFound, fmt.Sprintf("find %s account", field), err)
 		}
-		return nil, apierr.Wrap(apierr.CodeInternalError, "find reviewer account", err)
+		return nil, apierr.Wrap(apierr.CodeInternalError, fmt.Sprintf("find %s account", field), err)
 	}
 	actor := shared.Actor{
 		ID:   acc.AccountID,
@@ -169,7 +347,7 @@ func (h *Write) loadReviewer(c *gin.Context, reviewerID string) (*shared.Actor, 
 	case account.TypeAgent:
 		actor.Kind = shared.ActorKindAgent
 	default:
-		return nil, apierr.New(apierr.CodeInvalidRequest, "reviewer account type is invalid")
+		return nil, apierr.New(apierr.CodeInvalidRequest, fmt.Sprintf("%s account type is invalid", field))
 	}
 	return &actor, nil
 }
@@ -186,4 +364,11 @@ func (h *Write) httpEvent(c *gin.Context, eventType, suffix string) *appcmd.Even
 		ID:   fmt.Sprintf("http:%s:%s:%s", eventType, requestID, suffix),
 		Type: eventType,
 	}
+}
+
+func eventID(meta *appcmd.EventMeta) string {
+	if meta == nil {
+		return ""
+	}
+	return meta.ID
 }
