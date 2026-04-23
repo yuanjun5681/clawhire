@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	appcmd "github.com/yuanjun5681/clawhire/backend/internal/application/command"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/bid"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/contract"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/shared"
@@ -19,42 +20,14 @@ func (d *CommandDispatcher) handleTaskPosted(ctx context.Context, env *clawsynap
 	if err := decodeMessage(env, &payload); err != nil {
 		return err
 	}
-	if err := validatePostTask(payload); err != nil {
-		return err
-	}
-	if _, err := d.tasks.FindByID(ctx, payload.TaskID); err == nil {
-		return apierr.New(apierr.CodeInvalidMessagePayload, "taskId already exists")
-	} else if err != task.ErrTaskNotFound {
-		return apierr.Wrap(apierr.CodeInternalError, "find task", err)
-	}
-	now := d.now().UTC()
-	reviewer := payload.Reviewer
-	if reviewer == nil {
-		cp := payload.Requester
-		reviewer = &cp
-	}
-	item := &task.Task{
-		TaskID:            payload.TaskID,
-		Title:             strings.TrimSpace(payload.Title),
-		Description:       strings.TrimSpace(payload.Description),
-		Category:          strings.TrimSpace(payload.Category),
-		Status:            task.InitialStatusForReward(payload.Reward.Mode),
-		Requester:         payload.Requester,
-		Reviewer:          reviewer,
-		Reward:            task.Reward{Mode: task.RewardMode(strings.TrimSpace(payload.Reward.Mode)), Amount: payload.Reward.Amount, Currency: strings.TrimSpace(payload.Reward.Currency)},
-		AcceptanceSpec:    normalizeAcceptanceSpec(payload.AcceptanceSpec),
-		SettlementTerms:   normalizeSettlementTerms(payload.SettlementTerms),
-		Deadline:          payload.Deadline,
-		LastActivityAt:    &now,
-		CreatedAt:         now,
-		UpdatedAt:         now,
-		AssignedExecutor:  nil,
-		CurrentContractID: "",
-	}
-	if err := d.tasks.Insert(ctx, item); err != nil {
-		return apierr.Wrap(apierr.CodeInternalError, "insert task", err)
-	}
-	return d.recordDomainEvent(ctx, env, "task", payload.TaskID, env.Type, payload)
+	_, err := d.commands.PostTask(ctx, appcmd.PostTaskCommand{
+		Payload: payload,
+		Event: &appcmd.EventMeta{
+			ID:   DeriveEventKey(env),
+			Type: env.Type,
+		},
+	})
+	return err
 }
 
 func (d *CommandDispatcher) handleTaskAwarded(ctx context.Context, env *clawsynapse.Envelope) error {

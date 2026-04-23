@@ -7,6 +7,7 @@ import (
 	"syscall"
 	"time"
 
+	appcmd "github.com/yuanjun5681/clawhire/backend/internal/application/command"
 	"github.com/yuanjun5681/clawhire/backend/internal/application/webhook"
 	"github.com/yuanjun5681/clawhire/backend/internal/infrastructure/config"
 	"github.com/yuanjun5681/clawhire/backend/internal/infrastructure/logx"
@@ -63,6 +64,11 @@ func main() {
 	accountRepo := repository.NewAccountRepo(mc.DB())
 
 	// --- 应用层装配 ---
+	commandSvc := appcmd.NewService(appcmd.Options{
+		Tasks:      taskRepo,
+		Bids:       bidRepo,
+		DomainEvts: domainEventRepo,
+	})
 	dispatcher := webhook.NewCommandDispatcher(webhook.CommandDispatcherOptions{
 		Tasks:       taskRepo,
 		Bids:        bidRepo,
@@ -74,6 +80,7 @@ func main() {
 		Settlements: settlementRepo,
 		Accounts:    accountRepo,
 		DomainEvts:  domainEventRepo,
+		Commands:    commandSvc,
 	})
 	webhookSvc := webhook.NewService(webhook.Options{
 		RawRepo:    rawRepo,
@@ -90,6 +97,7 @@ func main() {
 		Log:             log,
 		Health:          handler.NewHealth(mc),
 		ClawSynapseHook: handler.NewClawSynapseWebhook(webhookSvc, log),
+		Write:           handler.NewWrite(commandSvc, accountRepo),
 		Query: handler.NewQuery(
 			taskRepo,
 			bidRepo,

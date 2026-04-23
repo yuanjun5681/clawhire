@@ -1,0 +1,57 @@
+package command
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/yuanjun5681/clawhire/backend/internal/domain/shared"
+	"github.com/yuanjun5681/clawhire/backend/internal/protocol/clawhire"
+	"github.com/yuanjun5681/clawhire/backend/internal/shared/apierr"
+)
+
+func validateActor(actor shared.Actor, field string) error {
+	if strings.TrimSpace(actor.ID) == "" {
+		return apierr.New(apierr.CodeInvalidMessagePayload, fmt.Sprintf("%s.id is required", field))
+	}
+	if !actor.Kind.Valid() {
+		return apierr.New(apierr.CodeInvalidMessagePayload, fmt.Sprintf("%s.kind is invalid", field))
+	}
+	return nil
+}
+
+func validatePostTask(p clawhire.PostTaskPayload) error {
+	if strings.TrimSpace(p.TaskID) == "" {
+		return apierr.New(apierr.CodeInvalidMessagePayload, "taskId is required")
+	}
+	if strings.TrimSpace(p.Title) == "" {
+		return apierr.New(apierr.CodeInvalidMessagePayload, "title is required")
+	}
+	if strings.TrimSpace(p.Category) == "" {
+		return apierr.New(apierr.CodeInvalidMessagePayload, "category is required")
+	}
+	if err := validateActor(p.Requester, "requester"); err != nil {
+		return err
+	}
+	if p.Reviewer != nil {
+		if err := validateActor(*p.Reviewer, "reviewer"); err != nil {
+			return err
+		}
+	}
+	if strings.TrimSpace(p.Reward.Mode) == "" || strings.TrimSpace(p.Reward.Currency) == "" {
+		return apierr.New(apierr.CodeInvalidMessagePayload, "reward.mode and reward.currency are required")
+	}
+	return nil
+}
+
+func validatePlaceBid(p clawhire.PlaceBidPayload) error {
+	if strings.TrimSpace(p.TaskID) == "" || strings.TrimSpace(p.BidID) == "" {
+		return apierr.New(apierr.CodeInvalidMessagePayload, "taskId and bidId are required")
+	}
+	if err := validateActor(p.Executor, "executor"); err != nil {
+		return err
+	}
+	if strings.TrimSpace(p.Currency) == "" {
+		return apierr.New(apierr.CodeInvalidMessagePayload, "currency is required")
+	}
+	return nil
+}

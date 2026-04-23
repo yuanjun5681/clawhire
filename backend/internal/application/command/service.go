@@ -1,0 +1,108 @@
+package command
+
+import (
+	"context"
+	"encoding/json"
+	"time"
+
+	"github.com/yuanjun5681/clawhire/backend/internal/domain/bid"
+	"github.com/yuanjun5681/clawhire/backend/internal/domain/event"
+	"github.com/yuanjun5681/clawhire/backend/internal/domain/task"
+	"github.com/yuanjun5681/clawhire/backend/internal/protocol/clawhire"
+	"github.com/yuanjun5681/clawhire/backend/internal/shared/apierr"
+)
+
+type Now func() time.Time
+
+type EventMeta struct {
+	ID   string
+	Type string
+}
+
+type Service struct {
+	tasks      task.Repository
+	bids       bid.Repository
+	domainEvts event.DomainEventRepository
+	sm         task.StateMachine
+	now        Now
+}
+
+type Options struct {
+	Tasks      task.Repository
+	Bids       bid.Repository
+	DomainEvts event.DomainEventRepository
+	StateMach  task.StateMachine
+	Now        Now
+}
+
+type PostTaskCommand struct {
+	Payload clawhire.PostTaskPayload
+	Event   *EventMeta
+}
+
+type PlaceBidCommand struct {
+	Payload clawhire.PlaceBidPayload
+	Event   *EventMeta
+}
+
+type PostTaskResult struct {
+	TaskID  string `json:"taskId"`
+	EventID string `json:"eventId,omitempty"`
+}
+
+type PlaceBidResult struct {
+	TaskID  string `json:"taskId"`
+	BidID   string `json:"bidId"`
+	EventID string `json:"eventId,omitempty"`
+}
+
+func NewService(opt Options) *Service {
+	now := opt.Now
+	if now == nil {
+		now = time.Now
+	}
+	sm := opt.StateMach
+	if sm == nil {
+		sm = task.NewStateMachine()
+	}
+	return &Service{
+		tasks:      opt.Tasks,
+		bids:       opt.Bids,
+		domainEvts: opt.DomainEvts,
+		sm:         sm,
+		now:        now,
+	}
+}
+
+func payloadMap(payload interface{}) (map[string]interface{}, error) {
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+	var out map[string]interface{}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (s *Service) recordDomainEvent(ctx context.Context, aggregateType, aggregateID string, meta *EventMeta, payload interface{}) error {
+	if s.domainEvts == nil || meta == nil || meta.ID == "" || meta.Type == "" {
+		return nil
+	}
+	data, err := payloadMap(payload)
+	if err != nil {
+		return apierr.Wrap(apierr.CodeInternalError, "marshal domain event", err)
+	}
+	if err := s.domainEvts.Insert(ctx, &event.DomainEvent{
+		EventID:       meta.ID,
+		AggregateType: aggregateType,
+		AggregateID:   aggregateID,
+		EventType:     meta.Type,
+		Data:          data,
+		CreatedAt:     s.now().UTC(),
+	}); err != nil {
+		return apierr.Wrap(apierr.CodeInternalError, "insert domain event", err)
+	}
+	return nil
+}

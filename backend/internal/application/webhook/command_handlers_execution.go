@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/yuanjun5681/clawhire/backend/internal/domain/bid"
+	appcmd "github.com/yuanjun5681/clawhire/backend/internal/application/command"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/milestone"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/progress"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/submission"
@@ -19,33 +19,14 @@ func (d *CommandDispatcher) handleBidPlaced(ctx context.Context, env *clawsynaps
 	if err := decodeMessage(env, &payload); err != nil {
 		return err
 	}
-	if err := validatePlaceBid(payload); err != nil {
-		return err
-	}
-	t, err := d.tasks.FindByID(ctx, payload.TaskID)
-	if err != nil {
-		return toAPIError("find task", err)
-	}
-	if err := d.sm.CanTransit(t.Status, task.ActionPlaceBid); err != nil {
-		return apierr.Wrap(apierr.CodeInvalidState, "place bid not allowed", err)
-	}
-	item := &bid.Bid{
-		BidID:     payload.BidID,
-		TaskID:    payload.TaskID,
-		Executor:  payload.Executor,
-		Price:     payload.Price,
-		Currency:  strings.TrimSpace(payload.Currency),
-		Proposal:  strings.TrimSpace(payload.Proposal),
-		Status:    bid.StatusActive,
-		CreatedAt: d.now().UTC(),
-	}
-	if err := d.bids.Insert(ctx, item); err != nil {
-		return apierr.Wrap(apierr.CodeInternalError, "insert bid", err)
-	}
-	if err := d.tasks.TouchActivity(ctx, payload.TaskID, d.now().UTC()); err != nil {
-		return toAPIError("touch task", err)
-	}
-	return d.recordDomainEvent(ctx, env, "task", payload.TaskID, env.Type, payload)
+	_, err := d.commands.PlaceBid(ctx, appcmd.PlaceBidCommand{
+		Payload: payload,
+		Event: &appcmd.EventMeta{
+			ID:   DeriveEventKey(env),
+			Type: env.Type,
+		},
+	})
+	return err
 }
 
 func (d *CommandDispatcher) handleProgressReported(ctx context.Context, env *clawsynapse.Envelope) error {

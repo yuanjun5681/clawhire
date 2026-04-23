@@ -13,6 +13,7 @@ type Deps struct {
 	Health          *handler.Health
 	ClawSynapseHook *handler.ClawSynapseWebhook
 	Query           *handler.Query
+	Write           *handler.Write
 }
 
 func RegisterRoutes(e *gin.Engine, d Deps) {
@@ -24,6 +25,10 @@ func RegisterRoutes(e *gin.Engine, d Deps) {
 	e.GET("/readyz", d.Health.Ready)
 
 	api := e.Group("/api")
+	if d.Write != nil {
+		api.POST("/tasks", d.Write.CreateTask)
+		api.POST("/tasks/:taskId/bids", d.Write.CreateBid)
+	}
 	if d.Query != nil {
 		api.GET("/tasks", d.Query.ListTasks)
 		api.GET("/tasks/:taskId", d.Query.GetTask)

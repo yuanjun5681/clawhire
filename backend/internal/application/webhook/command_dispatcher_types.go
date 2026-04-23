@@ -3,6 +3,7 @@ package webhook
 import (
 	"time"
 
+	appcmd "github.com/yuanjun5681/clawhire/backend/internal/application/command"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/account"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/bid"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/contract"
@@ -29,6 +30,7 @@ type CommandDispatcher struct {
 	domainEvts  event.DomainEventRepository
 	sm          task.StateMachine
 	now         Now
+	commands    *appcmd.Service
 	handlers    map[string]commandFunc
 }
 
@@ -44,6 +46,7 @@ type CommandDispatcherOptions struct {
 	Accounts    account.Repository
 	DomainEvts  event.DomainEventRepository
 	StateMach   task.StateMachine
+	Commands    *appcmd.Service
 	Now         Now
 }
 
@@ -55,6 +58,17 @@ func NewCommandDispatcher(opt CommandDispatcherOptions) *CommandDispatcher {
 	sm := opt.StateMach
 	if sm == nil {
 		sm = task.NewStateMachine()
+	}
+
+	commands := opt.Commands
+	if commands == nil {
+		commands = appcmd.NewService(appcmd.Options{
+			Tasks:      opt.Tasks,
+			Bids:       opt.Bids,
+			DomainEvts: opt.DomainEvts,
+			StateMach:  sm,
+			Now:        appcmd.Now(now),
+		})
 	}
 
 	d := &CommandDispatcher{
@@ -70,6 +84,7 @@ func NewCommandDispatcher(opt CommandDispatcherOptions) *CommandDispatcher {
 		domainEvts:  opt.DomainEvts,
 		sm:          sm,
 		now:         now,
+		commands:    commands,
 	}
 	d.handlers = map[string]commandFunc{
 		clawhire.TypeTaskPosted:         d.handleTaskPosted,
