@@ -26,6 +26,32 @@ export async function getTask(taskId: string): Promise<TaskDetail> {
   return normalizeTaskDetail(res)
 }
 
+export interface CreateTaskInput {
+  taskId: string
+  title: string
+  category: string
+  description?: string
+  reviewerId?: string
+  reward: {
+    mode: 'fixed' | 'bid' | 'milestone'
+    amount: number
+    currency: string
+  }
+  acceptanceSpec?: {
+    mode: 'manual' | 'schema' | 'test' | 'hybrid'
+    rules: string[]
+  }
+  deadline?: string
+}
+
+export async function createTask(payload: CreateTaskInput) {
+  if (USE_MOCK) return mock.createTask(payload)
+  return httpPost<CreateTaskInput, { taskId: string; eventId?: string }>(
+    '/tasks',
+    payload,
+  )
+}
+
 export interface CreateBidInput {
   bidId: string
   price: number

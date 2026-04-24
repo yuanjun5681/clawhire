@@ -76,8 +76,8 @@ export async function httpGetPaginated<T>(
   url: string,
   config?: AxiosRequestConfig,
 ): Promise<Paginated<T>> {
-  const res = await instance.get<ApiResponse<T[]>>(url, config)
-  const data = unwrap(res.data, res.status)
+  const res = await instance.get<ApiResponse<T[] | null>>(url, config)
+  const data = unwrap(res.data, res.status) ?? []
   const meta = res.data.success ? res.data.meta ?? {} : {}
   return {
     items: data,

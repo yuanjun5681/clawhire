@@ -1,6 +1,7 @@
 import { ApiRequestError } from '../http'
-import { tasks } from './db'
+import { accounts, tasks } from './db'
 import { delay, paginate } from './util'
+import type { CreateTaskInput } from '../tasks'
 import type {
   Paginated,
   TaskDetail,
@@ -76,4 +77,54 @@ export async function getTask(taskId: string): Promise<TaskDetail> {
       404,
     )
   return delay(t)
+}
+
+export async function createTask(
+  input: CreateTaskInput,
+): Promise<{ taskId: string; eventId?: string }> {
+  if (tasks.find((x) => x.taskId === input.taskId)) {
+    throw new ApiRequestError(
+      { code: 'INVALID_REQUEST', message: 'taskId already exists' },
+      400,
+    )
+  }
+  const requester = accounts[0]
+  const reviewerAccount = input.reviewerId
+    ? accounts.find((a) => a.accountId === input.reviewerId)
+    : undefined
+  const now = new Date().toISOString()
+  const detail: TaskDetail = {
+    taskId: input.taskId,
+    title: input.title,
+    description: input.description ?? '',
+    category: input.category,
+    status: 'OPEN',
+    requester: {
+      id: requester.accountId,
+      kind: requester.type,
+      name: requester.displayName,
+      nodeId: requester.nodeId,
+    },
+    reviewer: reviewerAccount
+      ? {
+          id: reviewerAccount.accountId,
+          kind: reviewerAccount.type,
+          name: reviewerAccount.displayName,
+          nodeId: reviewerAccount.nodeId,
+        }
+      : {
+          id: requester.accountId,
+          kind: requester.type,
+          name: requester.displayName,
+          nodeId: requester.nodeId,
+        },
+    reward: input.reward,
+    acceptanceSpec: input.acceptanceSpec ?? { mode: 'manual', rules: [] },
+    deadline: input.deadline,
+    lastActivityAt: now,
+    createdAt: now,
+    updatedAt: now,
+  }
+  tasks.unshift(detail)
+  return delay({ taskId: input.taskId })
 }

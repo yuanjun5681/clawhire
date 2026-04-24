@@ -131,11 +131,13 @@ export function normalizeTaskListItem(item: TaskListItem): TaskListItem {
 }
 
 export function normalizeTaskDetail(item: TaskDetail): TaskDetail {
+  const spec = item.acceptanceSpec ?? { mode: 'manual', rules: [] }
   return {
     ...item,
     requester: normalizeActor(item.requester as unknown as RawActor)!,
     reviewer: normalizeActor(item.reviewer as unknown as RawActor),
     assignedExecutor: normalizeActor(item.assignedExecutor as unknown as RawActor),
+    acceptanceSpec: { ...spec, rules: spec.rules ?? [] },
   }
 }
 

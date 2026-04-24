@@ -122,6 +122,9 @@ func (h *Query) ListTaskBids(c *gin.Context) {
 		response.FailErr(c, apierr.Wrap(apierr.CodeInternalError, "list task bids", err))
 		return
 	}
+	if items == nil {
+		items = []*bid.Bid{}
+	}
 	response.OKMeta(c, items, &response.Meta{Page: page, PageSize: pageSize, Total: total})
 }
 
@@ -136,6 +139,9 @@ func (h *Query) ListTaskProgress(c *gin.Context) {
 		response.FailErr(c, apierr.Wrap(apierr.CodeInternalError, "list task progress", err))
 		return
 	}
+	if items == nil {
+		items = []*progress.Report{}
+	}
 	response.OKMeta(c, items, &response.Meta{Page: page, PageSize: pageSize, Total: total})
 }
 
@@ -144,6 +150,9 @@ func (h *Query) ListTaskMilestones(c *gin.Context) {
 	if err != nil {
 		response.FailErr(c, apierr.Wrap(apierr.CodeInternalError, "list task milestones", err))
 		return
+	}
+	if items == nil {
+		items = []*milestone.Milestone{}
 	}
 	response.OK(c, items)
 }
@@ -159,6 +168,9 @@ func (h *Query) ListTaskSubmissions(c *gin.Context) {
 		response.FailErr(c, apierr.Wrap(apierr.CodeInternalError, "list task submissions", err))
 		return
 	}
+	if items == nil {
+		items = []*submission.Submission{}
+	}
 	response.OKMeta(c, items, &response.Meta{Page: page, PageSize: pageSize, Total: total})
 }
 
@@ -173,6 +185,9 @@ func (h *Query) ListTaskReviews(c *gin.Context) {
 		response.FailErr(c, apierr.Wrap(apierr.CodeInternalError, "list task reviews", err))
 		return
 	}
+	if items == nil {
+		items = []*review.Review{}
+	}
 	response.OKMeta(c, items, &response.Meta{Page: page, PageSize: pageSize, Total: total})
 }
 
@@ -181,6 +196,9 @@ func (h *Query) ListTaskSettlements(c *gin.Context) {
 	if err != nil {
 		response.FailErr(c, apierr.Wrap(apierr.CodeInternalError, "list task settlements", err))
 		return
+	}
+	if items == nil {
+		items = []*settlement.Settlement{}
 	}
 	response.OK(c, items)
 }
@@ -253,6 +271,9 @@ func (h *Query) ListAccounts(c *gin.Context) {
 		response.FailErr(c, apierr.Wrap(apierr.CodeInternalError, "list accounts", err))
 		return
 	}
+	if items == nil {
+		items = []*account.Account{}
+	}
 	response.OKMeta(c, items, &response.Meta{Page: page, PageSize: pageSize, Total: total})
 }
 
@@ -275,6 +296,9 @@ func (h *Query) ListAccountAgents(c *gin.Context) {
 	if err != nil {
 		response.FailErr(c, apierr.Wrap(apierr.CodeInternalError, "list account agents", err))
 		return
+	}
+	if items == nil {
+		items = []*account.Account{}
 	}
 	response.OKMeta(c, items, &response.Meta{Page: page, PageSize: pageSize, Total: total})
 }
