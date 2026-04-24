@@ -8,21 +8,28 @@ import EmptyState from '@/components/EmptyState.vue'
 import ErrorState from '@/components/ErrorState.vue'
 import Pagination from '@/components/Pagination.vue'
 import CreateTaskModal from '@/components/CreateTaskModal.vue'
+import { UiButton, UiStat } from '@/components/ui'
 import { ApiRequestError, tasksApi } from '@/api'
 import { useIdentityStore } from '@/stores/identity'
+import { useToastStore } from '@/stores/toast'
 import type { Paginated, TaskListItem, TaskQuery } from '@/types'
 
 const PAGE_SIZE = 6
 
 const router = useRouter()
 const identity = useIdentityStore()
+const toast = useToastStore()
 
 const query = ref<TaskQuery>({ page: 1, pageSize: PAGE_SIZE })
 const loading = ref(true)
 const apiError = ref<{ message: string; code?: string } | null>(null)
 const result = ref<Paginated<TaskListItem> | null>(null)
 const createOpen = ref(false)
-const toast = ref<string | null>(null)
+
+// 额外的 stat 数据
+const statOpen = ref<number>(0)
+const statBidding = ref<number>(0)
+const statInProgress = ref<number>(0)
 
 const canCreate = computed(() => identity.accountType === 'human')
 
@@ -54,6 +61,21 @@ async function load() {
   }
 }
 
+async function loadStats() {
+  try {
+    const [open, bidding, inProgress] = await Promise.all([
+      tasksApi.listTasks({ status: 'OPEN', page: 1, pageSize: 1 }),
+      tasksApi.listTasks({ status: 'BIDDING', page: 1, pageSize: 1 }),
+      tasksApi.listTasks({ status: 'IN_PROGRESS', page: 1, pageSize: 1 }),
+    ])
+    statOpen.value = open.total
+    statBidding.value = bidding.total
+    statInProgress.value = inProgress.total
+  } catch {
+    // 忽略 stat 错误
+  }
+}
+
 function clearFilters() {
   query.value = { page: 1, pageSize: PAGE_SIZE }
 }
@@ -62,52 +84,122 @@ function changePage(p: number) {
   query.value = { ...query.value, page: p }
 }
 
-function flash(message: string) {
-  toast.value = message
-  window.setTimeout(() => {
-    toast.value = null
-  }, 2400)
-}
-
 function handleCreated(taskId: string) {
   createOpen.value = false
-  flash('任务已发布')
+  toast.success('任务已发布，正在跳转到任务详情', '发布成功')
   router.push(`/tasks/${taskId}`)
 }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  loadStats()
+})
 watch(query, load, { deep: true })
 </script>
 
 <template>
-  <section class="space-y-4">
-    <header class="flex flex-wrap items-start justify-between gap-3">
-      <div class="space-y-1">
-        <h1 class="text-2xl font-semibold tracking-tight">任务大厅</h1>
-        <p class="text-sm text-base-content/60">浏览和筛选开放任务。</p>
-      </div>
-      <button
-        type="button"
-        class="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm text-primary-content transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-primary/60"
-        :disabled="!canCreate"
-        :title="canCreate ? undefined : '当前仅支持 Human 账号发布任务'"
-        @click="createOpen = true"
-      >
-        <svg
-          class="h-4 w-4"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
+  <section class="space-y-6">
+    <!-- hero header -->
+    <header
+      class="relative overflow-hidden rounded-box border border-base-300/70 bg-[linear-gradient(120deg,color-mix(in_oklch,var(--color-primary)_10%,var(--color-base-100))_0%,var(--color-base-100)_60%,color-mix(in_oklch,var(--color-accent)_12%,var(--color-base-100))_100%)] px-6 py-7 sm:px-8 sm:py-9"
+    >
+      <span
+        aria-hidden="true"
+        class="pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full bg-primary/20 blur-3xl"
+      />
+      <span
+        aria-hidden="true"
+        class="pointer-events-none absolute -left-24 -bottom-24 h-56 w-56 rounded-full bg-accent/25 blur-3xl"
+      />
+
+      <div class="relative flex flex-wrap items-start justify-between gap-5">
+        <div class="space-y-2">
+          <span
+            class="inline-flex items-center gap-1.5 rounded-full bg-primary/12 px-2.5 py-1 text-[11px] font-medium text-primary ring-1 ring-primary/25"
+          >
+            <span class="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+            Task Marketplace
+          </span>
+          <h1 class="text-3xl font-semibold tracking-tight sm:text-[34px]">
+            任务大厅
+            <span class="gradient-text">· Human × Agent</span>
+          </h1>
+          <p class="max-w-lg text-sm text-base-content/65">
+            浏览与筛选开放任务，实时查看报价、交付、验收与结算的完整时间线。
+          </p>
+        </div>
+
+        <UiButton
+          size="lg"
+          :disabled="!canCreate"
+          :title="canCreate ? undefined : '当前仅支持 Human 账号发布任务'"
+          @click="createOpen = true"
         >
-          <line x1="12" y1="5" x2="12" y2="19" />
-          <line x1="5" y1="12" x2="19" y2="12" />
-        </svg>
-        发布任务
-      </button>
+          <svg
+            class="h-4 w-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          发布任务
+        </UiButton>
+      </div>
+
+      <!-- stats bar -->
+      <div
+        class="relative mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4"
+      >
+        <UiStat
+          label="开放"
+          :value="statOpen"
+          hint="等待报价或指派"
+          tone="primary"
+          icon
+        >
+          <template #icon>
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+          </template>
+        </UiStat>
+        <UiStat
+          label="竞价中"
+          :value="statBidding"
+          hint="多方正在报价"
+          tone="accent"
+          icon
+        >
+          <template #icon>
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+          </template>
+        </UiStat>
+        <UiStat
+          label="执行中"
+          :value="statInProgress"
+          hint="契约已生效"
+          tone="success"
+          icon
+        >
+          <template #icon>
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12A10 10 0 1 1 12 2" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+          </template>
+        </UiStat>
+        <UiStat
+          label="当前筛选"
+          :value="result ? result.total : 0"
+          :hint="hasActiveFilter ? '已生效' : '未筛选'"
+          icon
+        >
+          <template #icon>
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
+          </template>
+        </UiStat>
+      </div>
     </header>
 
     <FilterBar
@@ -118,7 +210,7 @@ watch(query, load, { deep: true })
 
     <div
       v-if="loading"
-      class="grid grid-cols-1 gap-3 md:grid-cols-2"
+      class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
     >
       <SkeletonTaskCard v-for="i in PAGE_SIZE" :key="i" />
     </div>
@@ -145,7 +237,7 @@ watch(query, load, { deep: true })
     />
 
     <template v-else-if="result">
-      <ul class="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <ul class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         <li v-for="t in result.items" :key="t.taskId">
           <TaskCard :task="t" />
         </li>
@@ -164,19 +256,5 @@ watch(query, load, { deep: true })
       @close="createOpen = false"
       @created="handleCreated"
     />
-
-    <Transition
-      enter-active-class="transition duration-150"
-      enter-from-class="opacity-0 translate-y-1"
-      leave-active-class="transition duration-150"
-      leave-to-class="opacity-0 translate-y-1"
-    >
-      <div
-        v-if="toast"
-        class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-base-300 bg-base-100 px-4 py-2 text-sm text-base-content shadow-lg"
-      >
-        {{ toast }}
-      </div>
-    </Transition>
   </section>
 </template>

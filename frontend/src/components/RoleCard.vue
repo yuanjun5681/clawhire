@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
+import UiAvatar from './ui/UiAvatar.vue'
+import UiBadge from './ui/UiBadge.vue'
 import type { AccountSummary } from '@/types'
 
 const props = defineProps<{
@@ -9,39 +11,40 @@ const props = defineProps<{
   hint?: string
 }>()
 
-const initial = computed(() =>
-  props.account?.name ? props.account.name.slice(0, 1) : '—',
-)
-
 const isAgent = computed(() => props.account?.kind === 'agent')
 </script>
 
 <template>
   <div
-    class="rounded-lg border border-base-300 bg-base-100 p-3"
-    :class="isAgent ? 'border-l-2 border-l-primary/60' : ''"
+    :class="[
+      'relative overflow-hidden rounded-box border border-base-300/70 bg-base-100 p-4 transition hover:border-primary/30',
+      isAgent
+        ? 'ring-1 ring-primary/20 shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--color-primary)_20%,transparent)]'
+        : '',
+    ]"
   >
-    <div
-      class="flex items-center justify-between text-[11px] uppercase tracking-wider text-base-content/50"
-    >
-      <span>{{ role }}</span>
-      <span
+    <span
+      v-if="isAgent"
+      aria-hidden="true"
+      class="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-primary/12 blur-3xl"
+    />
+    <div class="relative flex items-center justify-between text-[10.5px] uppercase tracking-[0.12em] text-base-content/55">
+      <span class="font-semibold">{{ role }}</span>
+      <UiBadge
         v-if="account"
-        class="rounded bg-base-200 px-1.5 py-0.5 text-[10px] font-medium text-base-content/70"
-      >{{ account.kind }}</span>
+        :tone="isAgent ? 'primary' : 'neutral'"
+        size="xs"
+      >
+        {{ account.kind }}
+      </UiBadge>
     </div>
 
-    <div v-if="account" class="mt-2 flex items-center gap-2">
-      <div
-        class="grid h-8 w-8 place-items-center rounded-full text-sm font-medium"
-        :class="
-          isAgent
-            ? 'bg-primary/10 text-primary'
-            : 'bg-base-200 text-base-content/70'
-        "
-      >
-        {{ initial }}
-      </div>
+    <div v-if="account" class="relative mt-2.5 flex items-center gap-3">
+      <UiAvatar
+        :name="account.name"
+        size="md"
+        :tone="isAgent ? 'primary' : 'neutral'"
+      />
       <div class="min-w-0 flex-1">
         <RouterLink
           :to="`/accounts/${account.id}`"
@@ -51,16 +54,24 @@ const isAgent = computed(() => props.account?.kind === 'agent')
         </RouterLink>
         <div
           v-if="isAgent && account.nodeId"
-          class="truncate font-mono text-[11px] text-base-content/50"
+          class="truncate font-mono text-[11px] text-base-content/55"
         >
           node · {{ account.nodeId }}
         </div>
-        <div v-else-if="hint" class="truncate text-[11px] text-base-content/50">
+        <div
+          v-else-if="hint"
+          class="truncate text-[11px] text-base-content/55"
+        >
           {{ hint }}
         </div>
       </div>
     </div>
 
-    <p v-else class="mt-2 text-xs text-base-content/40">未分配</p>
+    <p
+      v-else
+      class="relative mt-2 rounded-field border border-dashed border-base-300/80 px-3 py-2 text-xs text-base-content/45"
+    >
+      {{ hint ?? '未分配' }}
+    </p>
   </div>
 </template>

@@ -7,106 +7,304 @@
   root: ':root';
 }
 
+/* ────────────────────────────────────────────────────────────────
+   ClawHire Light — 2026 editorial / glass / gradient aesthetic
+   Primary: electric indigo-violet   Accent: neon mint
+   ──────────────────────────────────────────────────────────────── */
 @plugin "daisyui/theme" {
   name: 'clawhire';
   default: true;
   prefersdark: false;
   color-scheme: light;
 
-  --color-base-100: oklch(99% 0.003 240);
-  --color-base-200: oklch(96% 0.005 240);
-  --color-base-300: oklch(92% 0.008 240);
-  --color-base-content: oklch(22% 0.02 255);
+  --color-base-100: oklch(99% 0.004 280);
+  --color-base-200: oklch(96% 0.008 280);
+  --color-base-300: oklch(91% 0.012 280);
+  --color-base-content: oklch(20% 0.03 275);
 
-  --color-primary: oklch(42% 0.07 255);
-  --color-primary-content: oklch(98% 0.005 240);
+  --color-primary: oklch(55% 0.22 285);
+  --color-primary-content: oklch(99% 0.005 280);
 
-  --color-secondary: oklch(60% 0.08 210);
-  --color-secondary-content: oklch(98% 0.005 240);
+  --color-secondary: oklch(62% 0.17 220);
+  --color-secondary-content: oklch(99% 0.005 240);
 
-  --color-accent: oklch(58% 0.12 195);
-  --color-accent-content: oklch(18% 0.02 240);
+  --color-accent: oklch(78% 0.17 165);
+  --color-accent-content: oklch(20% 0.03 200);
 
-  --color-neutral: oklch(28% 0.015 250);
-  --color-neutral-content: oklch(96% 0.005 240);
+  --color-neutral: oklch(25% 0.02 275);
+  --color-neutral-content: oklch(96% 0.005 280);
 
-  --color-info: oklch(60% 0.12 240);
-  --color-info-content: oklch(98% 0.005 240);
+  --color-info: oklch(64% 0.14 235);
+  --color-info-content: oklch(99% 0.005 240);
 
-  --color-success: oklch(58% 0.14 150);
-  --color-success-content: oklch(98% 0.005 240);
+  --color-success: oklch(65% 0.17 150);
+  --color-success-content: oklch(99% 0.005 150);
 
-  --color-warning: oklch(72% 0.15 65);
-  --color-warning-content: oklch(18% 0.02 240);
+  --color-warning: oklch(78% 0.16 75);
+  --color-warning-content: oklch(18% 0.02 75);
 
-  --color-error: oklch(58% 0.19 25);
-  --color-error-content: oklch(98% 0.005 240);
+  --color-error: oklch(62% 0.22 22);
+  --color-error-content: oklch(99% 0.005 20);
 
-  --radius-selector: 0.5rem;
-  --radius-field: 0.375rem;
-  --radius-box: 0.75rem;
+  --radius-selector: 0.75rem;
+  --radius-field: 0.625rem;
+  --radius-box: 1rem;
 
   --size-selector: 0.25rem;
   --size-field: 0.25rem;
 
   --border: 1px;
-  --depth: 0;
+  --depth: 1;
   --noise: 0;
 }
 
+/* ────────────────────────────────────────────────────────────────
+   ClawHire Dark — deep velvet + neon primary
+   ──────────────────────────────────────────────────────────────── */
 @plugin "daisyui/theme" {
   name: 'clawhire-dark';
   default: false;
   prefersdark: true;
   color-scheme: dark;
 
-  --color-base-100: oklch(18% 0.015 250);
-  --color-base-200: oklch(22% 0.018 250);
-  --color-base-300: oklch(26% 0.02 250);
-  --color-base-content: oklch(92% 0.008 240);
+  --color-base-100: oklch(17% 0.015 280);
+  --color-base-200: oklch(21% 0.018 280);
+  --color-base-300: oklch(26% 0.022 280);
+  --color-base-content: oklch(94% 0.01 280);
 
-  --color-primary: oklch(70% 0.09 245);
-  --color-primary-content: oklch(18% 0.02 240);
+  --color-primary: oklch(72% 0.2 285);
+  --color-primary-content: oklch(14% 0.025 280);
 
-  --color-secondary: oklch(68% 0.1 200);
-  --color-secondary-content: oklch(18% 0.02 240);
+  --color-secondary: oklch(72% 0.16 220);
+  --color-secondary-content: oklch(14% 0.02 240);
 
-  --color-accent: oklch(72% 0.13 195);
-  --color-accent-content: oklch(18% 0.02 240);
+  --color-accent: oklch(82% 0.17 165);
+  --color-accent-content: oklch(16% 0.025 200);
 
-  --color-neutral: oklch(32% 0.02 250);
-  --color-neutral-content: oklch(96% 0.005 240);
+  --color-neutral: oklch(30% 0.02 280);
+  --color-neutral-content: oklch(96% 0.005 280);
 
-  --color-info: oklch(68% 0.12 240);
-  --color-info-content: oklch(15% 0.02 240);
+  --color-info: oklch(72% 0.14 235);
+  --color-info-content: oklch(14% 0.02 240);
 
-  --color-success: oklch(68% 0.14 150);
-  --color-success-content: oklch(15% 0.02 240);
+  --color-success: oklch(72% 0.16 150);
+  --color-success-content: oklch(14% 0.025 150);
 
-  --color-warning: oklch(76% 0.15 65);
-  --color-warning-content: oklch(15% 0.02 240);
+  --color-warning: oklch(82% 0.16 75);
+  --color-warning-content: oklch(14% 0.025 75);
 
-  --color-error: oklch(68% 0.19 25);
-  --color-error-content: oklch(98% 0.005 240);
+  --color-error: oklch(72% 0.2 22);
+  --color-error-content: oklch(14% 0.025 20);
 
-  --radius-selector: 0.5rem;
-  --radius-field: 0.375rem;
-  --radius-box: 0.75rem;
+  --radius-selector: 0.75rem;
+  --radius-field: 0.625rem;
+  --radius-box: 1rem;
+
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
 }
 
+/* ────────────────────────────────────────────────────────────────
+   Root / globals
+   ──────────────────────────────────────────────────────────────── */
 html,
 body,
 #app {
   min-height: 100svh;
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   margin: 0;
   font-family:
-    'Inter', 'PingFang SC', 'Noto Sans SC', system-ui, -apple-system, Roboto,
-    sans-serif;
+    'Inter', 'PingFang SC', 'Noto Sans SC', ui-sans-serif, system-ui,
+    -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-feature-settings:
+    'cv02', 'cv03', 'cv04', 'cv11';
+  letter-spacing: -0.005em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: var(--color-base-200);
+  background: var(--color-base-100);
   color: var(--color-base-content);
+  overflow-x: hidden;
+}
+
+/* 全局渐变网格背景 — editorial 2026 flavour */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(
+      1200px 600px at 10% -10%,
+      color-mix(in oklch, var(--color-primary) 22%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 500px at 100% 0%,
+      color-mix(in oklch, var(--color-accent) 18%, transparent),
+      transparent 55%
+    ),
+    radial-gradient(
+      700px 400px at 50% 110%,
+      color-mix(in oklch, var(--color-secondary) 14%, transparent),
+      transparent 60%
+    );
+  opacity: 0.75;
+}
+
+[data-theme='clawhire-dark'] body::before,
+:root[data-theme='clawhire-dark'] body::before {
+  opacity: 0.55;
+}
+
+#app {
+  position: relative;
+  z-index: 1;
+}
+
+/* 选中态 */
+::selection {
+  background: color-mix(in oklch, var(--color-primary) 35%, transparent);
+  color: var(--color-base-content);
+}
+
+/* 自定义 focus ring 基调 */
+:focus-visible {
+  outline: 2px solid color-mix(in oklch, var(--color-primary) 70%, transparent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* 滚动条 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--color-primary) 30%, transparent)
+    transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--color-base-content) 18%, transparent);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklch, var(--color-primary) 50%, transparent);
+  background-clip: content-box;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   Utility primitives used across the app
+   ──────────────────────────────────────────────────────────────── */
+@utility glass {
+  background-color: color-mix(in oklch, var(--color-base-100) 70%, transparent);
+  backdrop-filter: saturate(140%) blur(16px);
+  -webkit-backdrop-filter: saturate(140%) blur(16px);
+  border: 1px solid
+    color-mix(in oklch, var(--color-base-content) 8%, transparent);
+}
+
+@utility surface {
+  background-color: var(--color-base-100);
+  border: 1px solid
+    color-mix(in oklch, var(--color-base-content) 8%, transparent);
+  border-radius: var(--radius-box);
+  box-shadow:
+    0 1px 0 color-mix(in oklch, var(--color-base-content) 3%, transparent),
+    0 6px 24px -10px color-mix(in oklch, var(--color-base-content) 8%, transparent);
+}
+
+@utility surface-hover {
+  transition:
+    border-color 180ms ease,
+    transform 180ms ease,
+    box-shadow 240ms ease;
+}
+
+@utility gradient-text {
+  background: linear-gradient(
+    110deg,
+    var(--color-primary),
+    var(--color-accent) 55%,
+    var(--color-secondary)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility ring-brand {
+  box-shadow:
+    0 0 0 1px color-mix(in oklch, var(--color-primary) 40%, transparent),
+    0 10px 30px -12px color-mix(in oklch, var(--color-primary) 35%, transparent);
+}
+
+/* 通用 animations */
+@keyframes ch-float {
+  0%, 100% { transform: translateY(0) }
+  50% { transform: translateY(-8px) }
+}
+@keyframes ch-float-slow {
+  0%, 100% { transform: translateY(0) rotate(0deg) }
+  50% { transform: translateY(-14px) rotate(3deg) }
+}
+@keyframes ch-spin-slow {
+  to { transform: rotate(360deg) }
+}
+@keyframes ch-shimmer {
+  0% { transform: translateX(-100%) }
+  100% { transform: translateX(200%) }
+}
+@keyframes ch-toast-in {
+  0% { transform: translateX(120%) scale(0.92); opacity: 0 }
+  60% { opacity: 1 }
+  100% { transform: translateX(0) scale(1); opacity: 1 }
+}
+@keyframes ch-toast-out {
+  to { transform: translateX(120%) scale(0.9); opacity: 0 }
+}
+@keyframes ch-fade-up {
+  from { opacity: 0; transform: translateY(8px) }
+  to { opacity: 1; transform: translateY(0) }
+}
+
+.ch-anim-float { animation: ch-float 6s ease-in-out infinite }
+.ch-anim-float-slow { animation: ch-float-slow 9s ease-in-out infinite }
+.ch-anim-spin-slow { animation: ch-spin-slow 30s linear infinite }
+.ch-anim-fade-up { animation: ch-fade-up 420ms ease-out both }
+
+/* Noise overlay (used by login cover, stat blocks) */
+.ch-noise {
+  position: relative;
+}
+.ch-noise::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.4;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* Form reset 让所有浏览器的日期/下拉指针使用主题色 */
+input::-webkit-calendar-picker-indicator {
+  filter: invert(0.35);
+  cursor: pointer;
+}
+[data-theme='clawhire-dark'] input::-webkit-calendar-picker-indicator {
+  filter: invert(0.85);
 }

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import UiButton from './ui/UiButton.vue'
+
 export interface ActionItem {
   key: string
   label: string
@@ -14,53 +16,66 @@ const props = defineProps<{
   emptyHint?: string
 }>()
 
-const emit = defineEmits<{
+defineEmits<{
   run: [key: string]
 }>()
 
-function classFor(a: ActionItem): string {
-  const base =
-    'inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm transition disabled:cursor-not-allowed disabled:opacity-50'
-  if (a.primary) {
-    return `${base} bg-primary text-primary-content hover:bg-primary/90 disabled:bg-primary/60`
-  }
-  if (a.danger) {
-    return `${base} border border-red-200 bg-red-50 text-red-700 hover:bg-red-100`
-  }
-  return `${base} border border-base-300 bg-base-100 text-base-content hover:border-primary/40 hover:text-primary`
+function variant(a: ActionItem) {
+  if (a.primary) return 'primary' as const
+  if (a.danger) return 'danger' as const
+  return 'outline' as const
 }
 </script>
 
 <template>
   <section
-    class="rounded-xl border border-base-300 bg-base-100 p-4"
+    class="relative overflow-hidden rounded-box border border-base-300/70 bg-base-100 p-5"
   >
-    <header v-if="stageLabel || stageHint" class="mb-3 space-y-0.5">
+    <span
+      aria-hidden="true"
+      class="pointer-events-none absolute -right-20 -top-20 h-40 w-40 rounded-full bg-primary/10 blur-3xl"
+    />
+    <header v-if="stageLabel || stageHint" class="relative mb-4 space-y-1">
       <p
         v-if="stageLabel"
-        class="text-[11px] uppercase tracking-wider text-base-content/50"
+        class="text-[10.5px] uppercase tracking-[0.12em] text-base-content/55 font-semibold"
       >
         {{ stageLabel }}
       </p>
-      <p v-if="stageHint" class="text-sm text-base-content/70">
+      <p v-if="stageHint" class="text-sm text-base-content/75 leading-relaxed">
         {{ stageHint }}
       </p>
     </header>
 
-    <div v-if="actions.length > 0" class="flex flex-wrap gap-2">
-      <button
+    <div v-if="actions.length > 0" class="relative flex flex-wrap gap-2">
+      <UiButton
         v-for="a in actions"
         :key="a.key"
-        type="button"
-        :class="classFor(a)"
+        :variant="variant(a)"
+        size="sm"
         :disabled="Boolean(a.disabledReason)"
         :title="a.disabledReason ?? undefined"
-        @click="emit('run', a.key)"
+        @click="$emit('run', a.key)"
       >
         {{ a.label }}
-      </button>
+      </UiButton>
     </div>
-    <p v-else-if="props.emptyHint" class="text-sm text-base-content/50">
+    <p
+      v-else-if="props.emptyHint"
+      class="relative inline-flex items-center gap-1.5 text-xs text-base-content/50"
+    >
+      <svg
+        class="h-3.5 w-3.5"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 8v4M12 16h.01" />
+      </svg>
       {{ props.emptyHint }}
     </p>
   </section>

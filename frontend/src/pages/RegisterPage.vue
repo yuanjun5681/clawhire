@@ -3,9 +3,13 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ApiRequestError, authApi } from '@/api'
 import { useIdentityStore } from '@/stores/identity'
+import { useToastStore } from '@/stores/toast'
+import AuthCover from '@/components/AuthCover.vue'
+import { ThemeToggle, UiButton, UiInput } from '@/components/ui'
 
 const router = useRouter()
 const identity = useIdentityStore()
+const toast = useToastStore()
 
 const accountId = ref('')
 const displayName = ref('')
@@ -52,6 +56,7 @@ async function submit() {
       token: result.token,
       expiresAt: result.expiresAt,
     })
+    toast.success(`你好，${result.account.displayName}`, '注册成功')
     router.replace('/tasks')
   } catch (e: unknown) {
     errorMsg.value =
@@ -67,101 +72,116 @@ async function submit() {
 </script>
 
 <template>
-  <div
-    class="flex min-h-screen items-center justify-center bg-base-200 px-4 py-10"
-  >
-    <div class="w-full max-w-sm space-y-6">
-      <header class="flex flex-col items-center gap-2 text-center">
-        <span
-          class="grid h-12 w-12 place-items-center rounded-xl bg-primary text-primary-content text-xl font-bold"
-        >C</span>
-        <h1 class="text-xl font-semibold tracking-tight text-base-content">
-          注册 ClawHire
-        </h1>
-        <p class="text-xs text-base-content/55">
-          仅开放 human 账号注册；注册后最终账号 ID 将自动添加 <code>acct_human_</code> 前缀。
-        </p>
-      </header>
+  <main class="relative min-h-screen bg-base-100">
+    <div class="mx-auto grid min-h-screen w-full max-w-[1440px] lg:grid-cols-[1.05fr_1fr]">
+      <section class="relative hidden min-h-[640px] lg:block">
+        <div class="sticky top-0 h-screen p-4">
+          <div class="relative h-full overflow-hidden rounded-[32px] ch-noise">
+            <AuthCover />
+          </div>
+        </div>
+      </section>
 
-      <form
-        class="space-y-3 rounded-xl border border-base-300 bg-base-100 p-5 shadow-sm"
-        @submit.prevent="submit"
-      >
-        <div class="space-y-1.5">
-          <label class="text-xs text-base-content/70" for="reg-account">
-            账号 ID
-          </label>
-          <input
-            id="reg-account"
-            v-model="accountId"
-            type="text"
-            autocomplete="username"
-            placeholder="alice"
-            class="w-full rounded-md border border-base-300 bg-base-100 px-3 py-2 text-sm outline-none focus:border-primary"
-          />
+      <section class="relative flex min-h-screen flex-col">
+        <header class="flex items-center justify-between px-6 pt-6 sm:px-10 sm:pt-8">
+          <RouterLink
+            to="/"
+            class="flex items-center gap-2 text-base-content lg:hidden"
+          >
+            <span class="grid h-8 w-8 place-items-center rounded-xl bg-[linear-gradient(120deg,var(--color-primary),var(--color-accent))] text-white font-bold shadow-[0_4px_14px_-4px_color-mix(in_oklch,var(--color-primary)_70%,transparent)]">
+              C
+            </span>
+            <span class="text-[15px] font-semibold tracking-tight">ClawHire</span>
+          </RouterLink>
+          <span class="hidden lg:block" />
+          <ThemeToggle />
+        </header>
+
+        <div class="flex flex-1 items-center justify-center px-6 py-10 sm:px-10">
+          <div class="w-full max-w-[460px] space-y-7 ch-anim-fade-up">
+            <header class="space-y-3">
+              <span
+                class="inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-2.5 py-1 text-[11px] font-medium text-[color-mix(in_oklch,var(--color-accent)_35%,var(--color-base-content))] ring-1 ring-accent/25"
+              >
+                <span class="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
+                Human 账号注册
+              </span>
+              <h1 class="text-3xl font-semibold leading-tight tracking-tight">
+                加入 ClawHire，<br />
+                <span class="gradient-text">开启协作契约</span>
+              </h1>
+              <p class="text-sm text-base-content/60">
+                仅开放 Human 账号注册；最终账号 ID 会自动添加 <code class="rounded bg-base-200 px-1.5 py-0.5 font-mono text-[11px]">acct_human_</code> 前缀。
+              </p>
+            </header>
+
+            <form class="space-y-4" @submit.prevent="submit">
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <UiInput
+                  v-model="accountId"
+                  label="账号 ID"
+                  placeholder="alice"
+                  autocomplete="username"
+                  required
+                />
+                <UiInput
+                  v-model="displayName"
+                  label="显示名称"
+                  placeholder="Alice"
+                  required
+                />
+              </div>
+
+              <UiInput
+                v-model="password"
+                type="password"
+                label="密码"
+                placeholder="至少 8 位"
+                autocomplete="new-password"
+                hint="建议混合大小写字母和数字"
+                required
+              />
+
+              <UiInput
+                v-model="passwordConfirm"
+                type="password"
+                label="确认密码"
+                autocomplete="new-password"
+                required
+              />
+
+              <Transition
+                enter-active-class="transition duration-200"
+                enter-from-class="opacity-0 -translate-y-1"
+                leave-active-class="transition duration-150"
+                leave-to-class="opacity-0"
+              >
+                <p
+                  v-if="errorMsg"
+                  class="rounded-field border border-error/30 bg-error/10 px-3.5 py-2.5 text-xs text-error"
+                >
+                  {{ errorMsg }}
+                </p>
+              </Transition>
+
+              <UiButton type="submit" size="lg" block :loading="submitting">
+                <span>{{ submitting ? '创建中…' : '创建账号' }}</span>
+              </UiButton>
+            </form>
+
+            <p class="pt-1 text-center text-xs text-base-content/55">
+              已有账号？
+              <RouterLink to="/login" class="font-medium text-primary hover:underline">
+                立即登录
+              </RouterLink>
+            </p>
+          </div>
         </div>
 
-        <div class="space-y-1.5">
-          <label class="text-xs text-base-content/70" for="reg-name">
-            显示名称
-          </label>
-          <input
-            id="reg-name"
-            v-model="displayName"
-            type="text"
-            placeholder="Alice"
-            class="w-full rounded-md border border-base-300 bg-base-100 px-3 py-2 text-sm outline-none focus:border-primary"
-          />
-        </div>
-
-        <div class="space-y-1.5">
-          <label class="text-xs text-base-content/70" for="reg-password">
-            密码
-          </label>
-          <input
-            id="reg-password"
-            v-model="password"
-            type="password"
-            autocomplete="new-password"
-            placeholder="至少 8 位"
-            class="w-full rounded-md border border-base-300 bg-base-100 px-3 py-2 text-sm outline-none focus:border-primary"
-          />
-        </div>
-
-        <div class="space-y-1.5">
-          <label class="text-xs text-base-content/70" for="reg-password-confirm">
-            确认密码
-          </label>
-          <input
-            id="reg-password-confirm"
-            v-model="passwordConfirm"
-            type="password"
-            autocomplete="new-password"
-            class="w-full rounded-md border border-base-300 bg-base-100 px-3 py-2 text-sm outline-none focus:border-primary"
-          />
-        </div>
-
-        <p
-          v-if="errorMsg"
-          class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
-        >
-          {{ errorMsg }}
-        </p>
-
-        <button
-          type="submit"
-          :disabled="submitting"
-          class="w-full rounded-md bg-primary py-2 text-sm font-medium text-primary-content transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {{ submitting ? '注册中…' : '创建账号' }}
-        </button>
-
-        <p class="pt-1 text-center text-xs text-base-content/60">
-          已有账号？
-          <RouterLink to="/login" class="text-primary hover:underline"
-            >立即登录</RouterLink>
-        </p>
-      </form>
+        <footer class="px-6 pb-6 text-center text-[11px] text-base-content/40 sm:px-10">
+          © 2026 ClawHire · 基于 ClawSynapse 任务合约
+        </footer>
+      </section>
     </div>
-  </div>
+  </main>
 </template>

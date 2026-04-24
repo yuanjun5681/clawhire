@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import UiInput from './ui/UiInput.vue'
+import UiSelect from './ui/UiSelect.vue'
+import UiBadge from './ui/UiBadge.vue'
 import { TASK_STATUSES, type TaskQuery, type TaskStatus } from '@/types'
 
 const props = defineProps<{
@@ -38,9 +41,15 @@ const activeChips = computed(() => {
       label: `状态 · ${STATUS_LABELS[props.modelValue.status]}`,
     })
   if (props.modelValue.category)
-    chips.push({ key: 'category', label: `分类 · ${props.modelValue.category}` })
+    chips.push({
+      key: 'category',
+      label: `分类 · ${props.modelValue.category}`,
+    })
   if (props.modelValue.keyword)
-    chips.push({ key: 'keyword', label: `关键词 · ${props.modelValue.keyword}` })
+    chips.push({
+      key: 'keyword',
+      label: `关键词 · ${props.modelValue.keyword}`,
+    })
   return chips
 })
 
@@ -53,94 +62,93 @@ function clear(key: keyof TaskQuery) {
 function clearAll() {
   emit('update:modelValue', { page: 1, pageSize: props.modelValue.pageSize })
 }
+
+const keyword = computed({
+  get: () => props.modelValue.keyword ?? '',
+  set: (v: string) => patch({ keyword: v.trim() || undefined }),
+})
 </script>
 
 <template>
-  <div class="rounded-xl border border-base-300 bg-base-100 p-3">
-    <div class="flex flex-wrap items-center gap-2">
-      <div class="relative min-w-[220px] flex-1">
-        <input
-          :value="modelValue.keyword ?? ''"
-          type="text"
-          placeholder="按标题或分类搜索"
-          class="w-full rounded-md border border-base-300 bg-base-100 py-1.5 pr-3 pl-8 text-sm text-base-content outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/30"
-          @input="
-            patch({
-              keyword:
-                ($event.target as HTMLInputElement).value.trim() || undefined,
-            })
-          "
-        />
-        <svg
-          class="pointer-events-none absolute top-2 left-2.5 h-4 w-4 text-base-content/40"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <circle cx="11" cy="11" r="7" />
-          <path d="m21 21-4.3-4.3" />
-        </svg>
-      </div>
+  <div
+    class="rounded-box border border-base-300/70 bg-base-100/80 p-3 shadow-[0_2px_0_color-mix(in_oklch,var(--color-base-content)_3%,transparent)] backdrop-blur"
+  >
+    <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-[1fr_auto_auto_auto] sm:items-end">
+      <UiInput
+        v-model="keyword"
+        size="md"
+        placeholder="搜索标题或分类…"
+        prefix-icon
+      >
+        <template #prefix>
+          <svg
+            class="h-4 w-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+        </template>
+      </UiInput>
 
-      <select
-        :value="modelValue.status ?? ''"
-        class="rounded-md border border-base-300 bg-base-100 py-1.5 pr-8 pl-3 text-sm outline-none focus:border-primary/60"
-        @change="
-          patch({
-            status:
-              (($event.target as HTMLSelectElement).value as TaskStatus) ||
-              undefined,
-          })
+      <UiSelect
+        :model-value="modelValue.status ?? ''"
+        size="md"
+        @update:model-value="
+          (v: string) => patch({ status: (v as TaskStatus) || undefined })
         "
       >
         <option value="">全部状态</option>
         <option v-for="s in TASK_STATUSES" :key="s" :value="s">
           {{ STATUS_LABELS[s] }}
         </option>
-      </select>
+      </UiSelect>
 
-      <select
+      <UiSelect
         v-if="categories && categories.length"
-        :value="modelValue.category ?? ''"
-        class="rounded-md border border-base-300 bg-base-100 py-1.5 pr-8 pl-3 text-sm outline-none focus:border-primary/60"
-        @change="
-          patch({
-            category:
-              ($event.target as HTMLSelectElement).value || undefined,
-          })
+        :model-value="modelValue.category ?? ''"
+        size="md"
+        @update:model-value="
+          (v: string) => patch({ category: v || undefined })
         "
       >
         <option value="">全部分类</option>
         <option v-for="c in categories" :key="c" :value="c">{{ c }}</option>
-      </select>
+      </UiSelect>
 
       <span
         v-if="resultLabel"
-        class="ml-auto text-xs text-base-content/50"
-      >{{ resultLabel }}</span>
+        class="hidden text-xs text-base-content/55 sm:inline-flex sm:items-center sm:h-11 sm:px-3 sm:rounded-field sm:bg-base-200/60"
+      >
+        {{ resultLabel }}
+      </span>
     </div>
 
     <div
       v-if="activeChips.length > 0"
-      class="mt-2 flex flex-wrap items-center gap-1.5 border-t border-base-200 pt-2 text-xs"
+      class="mt-3 flex flex-wrap items-center gap-1.5 border-t border-base-300/60 pt-2.5 text-xs"
     >
-      <span class="text-base-content/40">当前筛选：</span>
+      <span class="text-base-content/45">当前筛选：</span>
       <button
         v-for="chip in activeChips"
         :key="chip.key"
         type="button"
-        class="inline-flex items-center gap-1 rounded-full border border-base-300 bg-base-200 px-2 py-0.5 text-base-content/70 hover:border-primary/40 hover:text-base-content"
+        class="group"
         @click="clear(chip.key)"
       >
-        {{ chip.label }}
-        <span aria-hidden="true" class="text-base-content/40">×</span>
+        <UiBadge tone="primary" size="sm">
+          {{ chip.label }}
+          <span aria-hidden="true" class="ml-0.5 opacity-60 group-hover:opacity-100">×</span>
+        </UiBadge>
       </button>
       <button
         type="button"
-        class="ml-1 text-base-content/50 underline-offset-2 hover:underline"
+        class="ml-1 text-base-content/50 underline-offset-4 hover:underline hover:text-base-content"
         @click="clearAll"
       >
         全部清除

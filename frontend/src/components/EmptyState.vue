@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import UiButton from './ui/UiButton.vue'
+
 defineProps<{
   title: string
   description?: string
@@ -12,41 +14,46 @@ defineEmits<{
 
 <template>
   <div
-    class="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-base-300 bg-base-100 px-6 py-12 text-center"
+    class="relative flex flex-col items-center justify-center gap-3 overflow-hidden rounded-box border border-dashed border-base-300/70 bg-base-100/60 px-6 py-14 text-center"
   >
+    <span
+      aria-hidden="true"
+      class="pointer-events-none absolute inset-0 bg-[radial-gradient(500px_260px_at_50%_-20%,color-mix(in_oklch,var(--color-primary)_14%,transparent),transparent_60%)]"
+    />
     <div
-      class="grid h-10 w-10 place-items-center rounded-full bg-base-200 text-base-content/40"
+      class="relative grid h-14 w-14 place-items-center rounded-full bg-[linear-gradient(135deg,color-mix(in_oklch,var(--color-primary)_14%,transparent),color-mix(in_oklch,var(--color-accent)_18%,transparent))] text-primary"
       aria-hidden="true"
     >
       <svg
-        class="h-5 w-5"
+        class="h-6 w-6"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
-        stroke-width="1.5"
+        stroke-width="1.6"
         stroke-linecap="round"
         stroke-linejoin="round"
       >
-        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <rect x="3" y="4" width="18" height="16" rx="3" />
         <path d="M8 2v4M16 2v4M3 10h18" />
+        <circle cx="12" cy="15" r="2" />
       </svg>
     </div>
-    <div class="space-y-0.5">
-      <p class="text-sm font-medium text-base-content">{{ title }}</p>
+    <div class="relative space-y-1">
+      <p class="text-sm font-semibold text-base-content">{{ title }}</p>
       <p
         v-if="description"
-        class="text-xs text-base-content/50"
+        class="max-w-sm text-xs text-base-content/55"
       >
         {{ description }}
       </p>
     </div>
-    <button
+    <UiButton
       v-if="actionLabel"
-      type="button"
-      class="inline-flex items-center rounded-md border border-base-300 bg-base-100 px-3 py-1.5 text-xs text-base-content hover:border-primary/40 hover:text-primary"
+      variant="outline"
+      size="sm"
       @click="$emit('action')"
     >
       {{ actionLabel }}
-    </button>
+    </UiButton>
   </div>
 </template>

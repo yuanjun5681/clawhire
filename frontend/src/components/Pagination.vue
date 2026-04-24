@@ -37,38 +37,40 @@ function go(p: number) {
 <template>
   <nav
     v-if="total > 0"
-    class="flex items-center justify-between gap-3 text-xs"
+    class="flex flex-wrap items-center justify-between gap-3 rounded-box border border-base-300/60 bg-base-100/60 px-3 py-2 text-xs backdrop-blur"
     aria-label="分页导航"
   >
-    <span class="text-base-content/50">
-      第 {{ page }} / {{ totalPages }} 页 · 共 {{ total }} 条
+    <span class="text-base-content/55">
+      第 <span class="font-semibold text-base-content">{{ page }}</span> /
+      {{ totalPages }} 页 · 共 {{ total }} 条
     </span>
 
     <div class="flex items-center gap-1">
       <button
         type="button"
-        class="rounded-md border border-base-300 bg-base-100 px-2.5 py-1 text-base-content disabled:cursor-not-allowed disabled:opacity-40"
+        class="inline-flex h-8 items-center gap-1 rounded-full border border-base-300/70 bg-base-100 px-3 text-base-content transition hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-base-300"
         :disabled="page <= 1"
         @click="go(page - 1)"
       >
+        <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
         上一页
       </button>
 
       <template v-for="(p, i) in pageList" :key="i">
         <span
           v-if="p === '...'"
-          class="px-1 text-base-content/40"
+          class="px-1.5 text-base-content/40"
           aria-hidden="true"
         >…</span>
         <button
           v-else
           type="button"
-          class="min-w-[32px] rounded-md border px-2 py-1 text-center"
-          :class="
+          :class="[
+            'grid h-8 min-w-[32px] place-items-center rounded-full px-2 text-center transition',
             p === page
-              ? 'border-primary/60 bg-primary/10 text-primary font-medium'
-              : 'border-base-300 bg-base-100 text-base-content hover:border-primary/40 hover:text-primary'
-          "
+              ? 'bg-[linear-gradient(120deg,var(--color-primary),var(--color-accent))] text-primary-content shadow-[0_4px_14px_-4px_color-mix(in_oklch,var(--color-primary)_70%,transparent)]'
+              : 'border border-base-300/70 bg-base-100 text-base-content hover:border-primary/40 hover:text-primary',
+          ]"
           @click="go(p)"
         >
           {{ p }}
@@ -77,11 +79,12 @@ function go(p: number) {
 
       <button
         type="button"
-        class="rounded-md border border-base-300 bg-base-100 px-2.5 py-1 text-base-content disabled:cursor-not-allowed disabled:opacity-40"
+        class="inline-flex h-8 items-center gap-1 rounded-full border border-base-300/70 bg-base-100 px-3 text-base-content transition hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-base-300"
         :disabled="page >= totalPages"
         @click="go(page + 1)"
       >
         下一页
+        <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
       </button>
     </div>
   </nav>

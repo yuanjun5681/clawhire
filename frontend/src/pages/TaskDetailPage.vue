@@ -7,6 +7,7 @@ import {
   tasksApi,
 } from '@/api'
 import { useIdentityStore } from '@/stores/identity'
+import { useToastStore } from '@/stores/toast'
 import StatusBadge from '@/components/StatusBadge.vue'
 import RoleCard from '@/components/RoleCard.vue'
 import ActionBar from '@/components/ActionBar.vue'
@@ -14,6 +15,7 @@ import type { ActionItem } from '@/components/ActionBar.vue'
 import Timeline from '@/components/Timeline.vue'
 import type { TimelineEvent } from '@/components/Timeline.vue'
 import ErrorState from '@/components/ErrorState.vue'
+import { UiBadge } from '@/components/ui'
 import { formatDate, formatDateTime, formatReward } from '@/utils/format'
 import type {
   Bid,
@@ -27,6 +29,7 @@ import type {
 
 const route = useRoute()
 const identity = useIdentityStore()
+const toast = useToastStore()
 
 const taskId = computed(() => String(route.params.taskId ?? ''))
 
@@ -38,7 +41,6 @@ const progress = ref<Progress[]>([])
 const submissions = ref<Submission[]>([])
 const reviews = ref<Review[]>([])
 const settlements = ref<Settlement[]>([])
-const toast = ref<string | null>(null)
 const actionSubmitting = ref(false)
 
 async function load() {
@@ -174,13 +176,6 @@ function nextId(prefix: string) {
   return `${prefix}_${Date.now()}`
 }
 
-function flash(message: string) {
-  toast.value = message
-  window.setTimeout(() => {
-    toast.value = null
-  }, 2400)
-}
-
 async function runAction(key: string) {
   if (!task.value || actionSubmitting.value) return
 
@@ -202,7 +197,7 @@ async function runAction(key: string) {
           currency: currentTask.reward.currency || 'USD',
           proposal: proposal || undefined,
         })
-        flash('报价已提交')
+        toast.success('报价已提交')
         break
       }
       case 'assign': {
@@ -223,7 +218,7 @@ async function runAction(key: string) {
             currency: currentTask.reward.currency || 'USD',
           },
         })
-        flash('已完成指派')
+        toast.success('已完成指派')
         break
       }
       case 'submit': {
@@ -245,7 +240,7 @@ async function runAction(key: string) {
                 }
               : undefined,
         })
-        flash('交付已提交')
+        toast.success('交付已提交')
         break
       }
       case 'approve': {
@@ -255,7 +250,7 @@ async function runAction(key: string) {
           submissionId: latestSubmission.submissionId,
           acceptedAt: new Date().toISOString(),
         })
-        flash('已通过验收')
+        toast.success('已通过验收')
         break
       }
       case 'reject': {
@@ -267,22 +262,23 @@ async function runAction(key: string) {
           reason: reason.trim(),
           rejectedAt: new Date().toISOString(),
         })
-        flash('已驳回交付')
+        toast.warning('已驳回交付')
         break
       }
       default:
-        flash(`当前前端尚未接入操作：${key}`)
+        toast.info(`当前前端尚未接入操作：${key}`)
         return
     }
 
     await load()
   } catch (e: unknown) {
-    flash(
+    toast.error(
       e instanceof ApiRequestError
         ? e.message
         : e instanceof Error
           ? e.message
           : '操作失败',
+      '操作失败',
     )
   } finally {
     actionSubmitting.value = false
@@ -342,9 +338,7 @@ const timelineEvents = computed<TimelineEvent[]>(() => {
     evs.push({
       id: `progress-${p.progressId}`,
       type: 'progress',
-      title: p.stage
-        ? `进度汇报 · ${p.stage}`
-        : '进度汇报',
+      title: p.stage ? `进度汇报 · ${p.stage}` : '进度汇报',
       summary: p.summary,
       actor: p.executor,
       at: p.reportedAt,
@@ -405,12 +399,8 @@ const timelineEvents = computed<TimelineEvent[]>(() => {
       at: st.recordedAt,
       meta: [
         { label: '金额', value: formatReward(st.amount, st.currency) },
-        ...(st.channel
-          ? [{ label: '渠道', value: st.channel }]
-          : []),
-        ...(st.externalRef
-          ? [{ label: '外部流水', value: st.externalRef }]
-          : []),
+        ...(st.channel ? [{ label: '渠道', value: st.channel }] : []),
+        ...(st.externalRef ? [{ label: '外部流水', value: st.externalRef }] : []),
       ],
     })
   }
@@ -448,25 +438,23 @@ const acceptanceModeLabel = computed(() => {
 </script>
 
 <template>
-  <section class="space-y-4">
-    <nav class="text-xs text-base-content/50">
+  <section class="space-y-5">
+    <nav class="flex items-center gap-1 text-xs text-base-content/50">
       <RouterLink to="/tasks" class="hover:text-primary">任务大厅</RouterLink>
-      <span class="mx-1">/</span>
+      <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
       <span class="text-base-content/70">任务详情</span>
     </nav>
 
     <div v-if="loading" class="grid grid-cols-1 gap-4 md:grid-cols-12">
-      <div class="space-y-3 md:col-span-8">
-        <div class="h-7 w-2/3 animate-pulse rounded bg-base-200" />
-        <div class="h-4 w-1/3 animate-pulse rounded bg-base-200" />
-        <div class="h-24 animate-pulse rounded-xl bg-base-200" />
-        <div class="h-16 animate-pulse rounded-xl bg-base-200" />
-        <div class="h-40 animate-pulse rounded-xl bg-base-200" />
+      <div class="space-y-4 md:col-span-8">
+        <div class="h-28 animate-pulse rounded-box bg-base-200" />
+        <div class="h-24 animate-pulse rounded-box bg-base-200" />
+        <div class="h-48 animate-pulse rounded-box bg-base-200" />
       </div>
       <div class="space-y-3 md:col-span-4">
-        <div class="h-24 animate-pulse rounded-xl bg-base-200" />
-        <div class="h-24 animate-pulse rounded-xl bg-base-200" />
-        <div class="h-24 animate-pulse rounded-xl bg-base-200" />
+        <div class="h-32 animate-pulse rounded-box bg-base-200" />
+        <div class="h-24 animate-pulse rounded-box bg-base-200" />
+        <div class="h-24 animate-pulse rounded-box bg-base-200" />
       </div>
     </div>
 
@@ -479,39 +467,43 @@ const acceptanceModeLabel = computed(() => {
 
     <div
       v-else-if="task"
-      class="grid grid-cols-1 gap-4 md:grid-cols-12"
+      class="grid grid-cols-1 gap-5 md:grid-cols-12"
     >
-      <div class="space-y-4 md:col-span-8">
+      <div class="space-y-5 md:col-span-8">
+        <!-- Task header -->
         <header
-          class="rounded-xl border border-base-300 bg-base-100 p-4 space-y-2"
+          class="relative overflow-hidden rounded-box border border-base-300/70 bg-base-100 p-6"
         >
-          <div class="flex items-start justify-between gap-3">
-            <h1 class="text-xl font-semibold tracking-tight text-base-content">
-              {{ task.title }}
-            </h1>
-            <StatusBadge :status="task.status" />
+          <span
+            aria-hidden="true"
+            class="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-primary/10 blur-3xl"
+          />
+          <div class="relative space-y-3">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <h1 class="text-[26px] font-semibold leading-tight tracking-tight text-base-content">
+                {{ task.title }}
+              </h1>
+              <StatusBadge :status="task.status" size="md" />
+            </div>
+            <div class="flex flex-wrap items-center gap-2 text-xs text-base-content/55">
+              <UiBadge tone="neutral" size="xs">
+                <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10" /></svg>
+                {{ task.category }}
+              </UiBadge>
+              <span class="font-mono">{{ task.taskId }}</span>
+              <span class="text-base-content/30">·</span>
+              <span>创建于 {{ formatDateTime(task.createdAt) }}</span>
+              <template v-if="task.lastActivityAt">
+                <span class="text-base-content/30">·</span>
+                <span>最近活跃 {{ formatDateTime(task.lastActivityAt) }}</span>
+              </template>
+            </div>
+            <p
+              class="whitespace-pre-line rounded-field border border-base-300/60 bg-base-200/40 p-4 text-sm leading-relaxed text-base-content/80"
+            >
+              {{ task.description }}
+            </p>
           </div>
-          <div
-            class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-base-content/55"
-          >
-            <span class="font-mono">{{ task.taskId }}</span>
-            <span class="text-base-content/30">·</span>
-            <span>分类 · {{ task.category }}</span>
-            <span class="text-base-content/30">·</span>
-            <span>创建于 {{ formatDateTime(task.createdAt) }}</span>
-            <span
-              v-if="task.lastActivityAt"
-              class="text-base-content/30"
-            >·</span>
-            <span v-if="task.lastActivityAt">
-              最近活跃 {{ formatDateTime(task.lastActivityAt) }}
-            </span>
-          </div>
-          <p
-            class="whitespace-pre-line text-sm leading-relaxed text-base-content/80"
-          >
-            {{ task.description }}
-          </p>
         </header>
 
         <ActionBar
@@ -522,89 +514,107 @@ const acceptanceModeLabel = computed(() => {
           @run="runAction"
         />
 
-        <section
-          class="rounded-xl border border-base-300 bg-base-100 p-4"
-        >
-          <header class="mb-3 flex items-center justify-between">
-            <h2 class="text-sm font-medium text-base-content">事件时间线</h2>
-            <span class="text-xs text-base-content/50">
+        <section class="rounded-box border border-base-300/70 bg-base-100 p-5">
+          <header class="mb-4 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <svg
+                class="h-4 w-4 text-primary"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M22 12A10 10 0 0 1 2 12" />
+                <path d="M12 2v10l5 3" />
+              </svg>
+              <h2 class="text-sm font-semibold tracking-tight">事件时间线</h2>
+            </div>
+            <span class="text-xs text-base-content/55">
               共 {{ timelineEvents.length }} 条
             </span>
           </header>
-          <Timeline
-            :events="timelineEvents"
-            empty-text="暂无活动记录。"
-          />
+          <Timeline :events="timelineEvents" empty-text="暂无活动记录。" />
         </section>
       </div>
 
-      <aside class="space-y-3 md:col-span-4">
+      <aside class="space-y-4 md:col-span-4">
         <section
-          class="rounded-xl border border-base-300 bg-base-100 p-4 space-y-2"
+          class="relative overflow-hidden rounded-box border border-primary/20 bg-[linear-gradient(135deg,color-mix(in_oklch,var(--color-primary)_14%,var(--color-base-100)),var(--color-base-100)_70%)] p-5"
         >
-          <p
-            class="text-[11px] uppercase tracking-wider text-base-content/50"
-          >
+          <span
+            aria-hidden="true"
+            class="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-primary/25 blur-3xl"
+          />
+          <p class="relative text-[10.5px] uppercase tracking-[0.14em] text-base-content/60 font-semibold">
             报酬
           </p>
-          <p class="text-2xl font-semibold text-base-content">
+          <p class="relative mt-2 text-[32px] font-semibold tracking-tight leading-none gradient-text">
             {{ formatReward(task.reward.amount, task.reward.currency) }}
           </p>
-          <p class="text-xs text-base-content/55">
+          <p class="relative mt-1 text-xs text-base-content/60">
             {{ rewardModeLabel }}
           </p>
         </section>
 
-        <section
-          class="rounded-xl border border-base-300 bg-base-100 p-4 space-y-1.5 text-xs"
-        >
-          <div class="flex items-center justify-between">
-            <span class="text-base-content/50">截止时间</span>
-            <span class="text-base-content/80">
-              {{ task.deadline ? formatDate(task.deadline) : '未设置' }}
-            </span>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-base-content/50">最近活跃</span>
-            <span class="text-base-content/80">
-              {{
-                task.lastActivityAt
-                  ? formatDateTime(task.lastActivityAt)
-                  : '—'
-              }}
-            </span>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-base-content/50">更新于</span>
-            <span class="text-base-content/80">
-              {{ formatDateTime(task.updatedAt) }}
-            </span>
-          </div>
+        <section class="rounded-box border border-base-300/70 bg-base-100 p-4">
+          <dl class="space-y-2.5 text-xs">
+            <div class="flex items-center justify-between">
+              <dt class="text-base-content/50">截止时间</dt>
+              <dd class="font-medium text-base-content/80">
+                {{ task.deadline ? formatDate(task.deadline) : '未设置' }}
+              </dd>
+            </div>
+            <div class="flex items-center justify-between">
+              <dt class="text-base-content/50">最近活跃</dt>
+              <dd class="font-medium text-base-content/80">
+                {{ task.lastActivityAt ? formatDateTime(task.lastActivityAt) : '—' }}
+              </dd>
+            </div>
+            <div class="flex items-center justify-between">
+              <dt class="text-base-content/50">更新于</dt>
+              <dd class="font-medium text-base-content/80">
+                {{ formatDateTime(task.updatedAt) }}
+              </dd>
+            </div>
+          </dl>
         </section>
 
-        <section
-          class="rounded-xl border border-base-300 bg-base-100 p-4 space-y-2"
-        >
+        <section class="rounded-box border border-base-300/70 bg-base-100 p-4">
           <div class="flex items-center justify-between">
-            <p
-              class="text-[11px] uppercase tracking-wider text-base-content/50"
-            >
+            <p class="text-[10.5px] uppercase tracking-[0.12em] text-base-content/55 font-semibold">
               验收规则
             </p>
-            <span
-              class="rounded bg-base-200 px-1.5 py-0.5 text-[10px] font-medium text-base-content/70"
-            >{{ acceptanceModeLabel }}</span>
+            <UiBadge tone="neutral" size="xs">{{ acceptanceModeLabel }}</UiBadge>
           </div>
           <ul
             v-if="task.acceptanceSpec.rules.length > 0"
-            class="list-inside list-disc space-y-0.5 text-xs text-base-content/75"
+            class="mt-2.5 space-y-1.5 text-xs text-base-content/75"
           >
-            <li v-for="r in task.acceptanceSpec.rules" :key="r">{{ r }}</li>
+            <li
+              v-for="r in task.acceptanceSpec.rules"
+              :key="r"
+              class="flex items-start gap-2"
+            >
+              <svg
+                class="mt-0.5 h-3.5 w-3.5 shrink-0 text-success"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              <span>{{ r }}</span>
+            </li>
           </ul>
-          <p v-else class="text-xs text-base-content/40">未配置验收规则。</p>
+          <p v-else class="mt-2 text-xs text-base-content/40">未配置验收规则。</p>
         </section>
 
-        <div class="space-y-2">
+        <div class="space-y-3">
           <RoleCard role="需求方" :account="task.requester" />
           <RoleCard
             role="验收方"
@@ -619,19 +629,5 @@ const acceptanceModeLabel = computed(() => {
         </div>
       </aside>
     </div>
-
-    <Transition
-      enter-active-class="transition duration-150"
-      enter-from-class="opacity-0 translate-y-1"
-      leave-active-class="transition duration-150"
-      leave-to-class="opacity-0 translate-y-1"
-    >
-      <div
-        v-if="toast"
-        class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-base-300 bg-base-100 px-4 py-2 text-sm text-base-content shadow-lg"
-      >
-        {{ toast }}
-      </div>
-    </Transition>
   </section>
 </template>

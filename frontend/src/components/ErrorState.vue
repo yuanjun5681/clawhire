@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import UiButton from './ui/UiButton.vue'
+
 defineProps<{
   message: string
   code?: string
@@ -12,15 +14,19 @@ defineEmits<{
 
 <template>
   <div
-    class="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-800"
+    class="relative overflow-hidden rounded-box border border-error/30 bg-error/5 p-5 text-sm text-error ring-1 ring-error/10"
   >
-    <div class="flex items-start gap-3">
+    <span
+      aria-hidden="true"
+      class="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-error/15 blur-3xl"
+    />
+    <div class="relative flex items-start gap-3">
       <div
-        class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-red-100 text-red-600"
+        class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-error/15 text-error ring-1 ring-error/25"
         aria-hidden="true"
       >
         <svg
-          class="h-4 w-4"
+          class="h-4.5 w-4.5"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -35,19 +41,31 @@ defineEmits<{
         </svg>
       </div>
       <div class="min-w-0 flex-1 space-y-1">
-        <p class="font-medium text-red-800">加载失败</p>
-        <p class="text-xs text-red-700/90 break-all">{{ message }}</p>
-        <p v-if="code" class="font-mono text-[11px] text-red-600/70">
+        <p class="font-semibold">加载失败</p>
+        <p class="text-xs text-error/85 break-words">{{ message }}</p>
+        <p v-if="code" class="font-mono text-[11px] text-error/70">
           错误码 · {{ code }}
         </p>
       </div>
-      <button
-        type="button"
-        class="shrink-0 rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs text-red-700 hover:bg-red-100"
+      <UiButton
+        variant="outline"
+        size="sm"
         @click="$emit('retry')"
       >
+        <svg
+          class="h-3.5 w-3.5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M3 12a9 9 0 1 0 3-6.7" />
+          <polyline points="3 4 3 10 9 10" />
+        </svg>
         {{ retryLabel ?? '重试' }}
-      </button>
+      </UiButton>
     </div>
   </div>
 </template>
