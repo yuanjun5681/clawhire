@@ -42,7 +42,7 @@ defineEmits<{
       </div>
       <div class="min-w-0 flex-1 space-y-1">
         <p class="font-semibold">加载失败</p>
-        <p class="text-xs text-error/85 break-words">{{ message }}</p>
+        <p class="text-xs text-error/85 wrap-break-word">{{ message }}</p>
         <p v-if="code" class="font-mono text-[11px] text-error/70">
           错误码 · {{ code }}
         </p>

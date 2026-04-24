@@ -70,7 +70,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="relative flex min-h-screen flex-col">
     <header
-      class="sticky top-0 z-30 border-b border-base-300/60 bg-base-100/70 backdrop-blur-xl supports-[backdrop-filter]:bg-base-100/50"
+      class="sticky top-0 z-30 border-b border-base-300/60 bg-base-100/70 backdrop-blur-xl supports-backdrop-filter:bg-base-100/50"
     >
       <div
         class="mx-auto flex h-16 w-full max-w-[1440px] items-center gap-6 px-5 sm:px-8"
@@ -81,7 +81,7 @@ onBeforeUnmount(() => {
         >
           <span
             aria-hidden="true"
-            class="relative grid h-9 w-9 place-items-center rounded-xl bg-[linear-gradient(120deg,var(--color-primary),var(--color-accent))] text-white shadow-[0_6px_20px_-8px_color-mix(in_oklch,var(--color-primary)_70%,transparent)] transition-transform group-hover:rotate-[-6deg]"
+            class="relative grid h-9 w-9 place-items-center rounded-xl bg-[linear-gradient(120deg,var(--color-primary),var(--color-accent))] text-white shadow-[0_6px_20px_-8px_color-mix(in_oklch,var(--color-primary)_70%,transparent)] transition-transform group-hover:-rotate-6"
           >
             <svg
               class="h-4 w-4"
@@ -141,7 +141,7 @@ onBeforeUnmount(() => {
               @click="toggleMenu"
             >
               <UiAvatar :name="identity.displayName" size="sm" ring />
-              <span class="hidden max-w-[8rem] truncate text-base-content sm:block">{{ identity.displayName || '未登录' }}</span>
+              <span class="hidden max-w-32 truncate text-base-content sm:block">{{ identity.displayName || '未登录' }}</span>
               <svg
                 :class="[
                   'h-3 w-3 text-base-content/50 transition-transform duration-200',

@@ -6,7 +6,7 @@
   >
     <span
       aria-hidden="true"
-      class="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-base-200/70 to-transparent animate-[ch-shimmer_1.4s_infinite]"
+      class="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-base-200/70 to-transparent animate-[ch-shimmer_1.4s_infinite]"
     />
     <div class="flex items-start justify-between gap-3">
       <div class="h-4 w-2/3 rounded-full bg-base-200" />

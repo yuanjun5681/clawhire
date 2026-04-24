@@ -56,7 +56,7 @@ function iconPath(item: ToastItem) {
     <div
       aria-live="polite"
       aria-atomic="true"
-      class="pointer-events-none fixed inset-x-0 top-4 z-[80] flex flex-col items-center gap-2.5 px-4 sm:inset-x-auto sm:right-5 sm:top-5 sm:items-end"
+      class="pointer-events-none fixed inset-x-0 top-4 z-80 flex flex-col items-center gap-2.5 px-4 sm:inset-x-auto sm:right-5 sm:top-5 sm:items-end"
     >
       <TransitionGroup name="ch-toast" tag="div" class="flex flex-col items-center gap-2.5 sm:items-end">
         <div
@@ -105,7 +105,7 @@ function iconPath(item: ToastItem) {
               <p v-if="item.title" class="text-sm font-semibold text-base-content">
                 {{ item.title }}
               </p>
-              <p class="text-[13px] leading-relaxed text-base-content/80 break-words">
+              <p class="text-[13px] leading-relaxed text-base-content/80 wrap-break-word">
                 {{ item.message }}
               </p>
             </div>

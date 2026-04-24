@@ -42,10 +42,10 @@ const OPTIONS: Array<{ value: ThemeMode; label: string; icon: string }> = [
     <span
       aria-hidden="true"
       :class="[
-        'absolute top-0.5 bottom-0.5 w-[calc(100%/3)] rounded-full transition-[transform] duration-300 ease-out',
+        'absolute top-0.5 bottom-0.5 w-1/3 rounded-full transition-[transform] duration-300 ease-out',
         'bg-[linear-gradient(120deg,var(--color-primary),var(--color-accent))] shadow-[0_4px_14px_-4px_color-mix(in_oklch,var(--color-primary)_60%,transparent)]',
         theme.mode === 'light' && 'translate-x-0',
-        theme.mode === 'auto' && 'translate-x-[100%]',
+        theme.mode === 'auto' && 'translate-x-full',
         theme.mode === 'dark' && 'translate-x-[200%]',
       ]"
     />

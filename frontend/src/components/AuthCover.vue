@@ -17,7 +17,7 @@
     <!-- Grid texture -->
     <div
       aria-hidden="true"
-      class="absolute inset-0 opacity-[0.09] bg-[linear-gradient(rgba(255,255,255,0.6)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.6)_1px,transparent_1px)] bg-[size:36px_36px]"
+      class="absolute inset-0 opacity-[0.09] bg-[linear-gradient(rgba(255,255,255,0.6)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.6)_1px,transparent_1px)] bg-size-[36px_36px]"
     />
 
     <!-- Floating orbs -->
@@ -27,7 +27,7 @@
     />
     <div
       aria-hidden="true"
-      class="absolute -bottom-14 -left-16 h-72 w-72 rounded-full bg-[color:var(--color-accent)]/50 blur-3xl ch-anim-float"
+      class="absolute -bottom-14 -left-16 h-72 w-72 rounded-full bg-(--color-accent)/50 blur-3xl ch-anim-float"
     />
 
     <!-- Foreground SVG illustration -->

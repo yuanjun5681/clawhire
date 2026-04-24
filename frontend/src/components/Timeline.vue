@@ -93,7 +93,7 @@ const sorted = computed(() =>
     <ol v-else class="relative space-y-4 pl-8">
       <span
         aria-hidden="true"
-        class="pointer-events-none absolute top-3 bottom-3 left-3 w-px bg-gradient-to-b from-base-300/20 via-base-300 to-base-300/20"
+        class="pointer-events-none absolute top-3 bottom-3 left-3 w-px bg-linear-to-b from-base-300/20 via-base-300 to-base-300/20"
       />
       <li
         v-for="ev in sorted"
