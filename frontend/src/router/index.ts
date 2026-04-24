@@ -14,6 +14,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '登录', public: true },
   },
   {
+    path: '/register',
+    name: 'register',
+    component: () => import('@/pages/RegisterPage.vue'),
+    meta: { title: '注册', public: true },
+  },
+  {
     path: '/',
     component: () => import('@/layouts/AppLayout.vue'),
     children: [
@@ -69,7 +75,7 @@ router.beforeEach((to) => {
       query: to.fullPath !== '/' ? { redirect: to.fullPath } : {},
     }
   }
-  if (identity.isLoggedIn && to.path === '/login') {
+  if (identity.isLoggedIn && (to.path === '/login' || to.path === '/register')) {
     return { path: '/tasks' }
   }
   return true

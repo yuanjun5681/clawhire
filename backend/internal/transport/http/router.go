@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 
+	infraauth "github.com/yuanjun5681/clawhire/backend/internal/infrastructure/auth"
 	"github.com/yuanjun5681/clawhire/backend/internal/transport/http/handler"
 	"github.com/yuanjun5681/clawhire/backend/internal/transport/http/middleware"
 )
@@ -14,6 +15,8 @@ type Deps struct {
 	ClawSynapseHook *handler.ClawSynapseWebhook
 	Query           *handler.Query
 	Write           *handler.Write
+	Auth            *handler.Auth
+	JWTIssuer       *infraauth.JWTIssuer
 }
 
 func RegisterRoutes(e *gin.Engine, d Deps) {
@@ -25,27 +28,40 @@ func RegisterRoutes(e *gin.Engine, d Deps) {
 	e.GET("/readyz", d.Health.Ready)
 
 	api := e.Group("/api")
+
+	// 公开的认证接口（注册 / 登录）
+	if d.Auth != nil {
+		authGroup := api.Group("/auth")
+		authGroup.POST("/register", d.Auth.Register)
+		authGroup.POST("/login", d.Auth.Login)
+	}
+
+	// 以下业务接口均需 Bearer token
+	authed := api.Group("")
+	if d.JWTIssuer != nil {
+		authed.Use(middleware.Auth(d.JWTIssuer))
+	}
 	if d.Write != nil {
-		api.POST("/tasks", d.Write.CreateTask)
-		api.POST("/tasks/:taskId/bids", d.Write.CreateBid)
-		api.POST("/tasks/:taskId/award", d.Write.AwardTask)
-		api.POST("/tasks/:taskId/submissions", d.Write.CreateSubmission)
-		api.POST("/tasks/:taskId/accept", d.Write.AcceptSubmission)
-		api.POST("/tasks/:taskId/reject", d.Write.RejectSubmission)
+		authed.POST("/tasks", d.Write.CreateTask)
+		authed.POST("/tasks/:taskId/bids", d.Write.CreateBid)
+		authed.POST("/tasks/:taskId/award", d.Write.AwardTask)
+		authed.POST("/tasks/:taskId/submissions", d.Write.CreateSubmission)
+		authed.POST("/tasks/:taskId/accept", d.Write.AcceptSubmission)
+		authed.POST("/tasks/:taskId/reject", d.Write.RejectSubmission)
 	}
 	if d.Query != nil {
-		api.GET("/tasks", d.Query.ListTasks)
-		api.GET("/tasks/:taskId", d.Query.GetTask)
-		api.GET("/tasks/:taskId/bids", d.Query.ListTaskBids)
-		api.GET("/tasks/:taskId/progress", d.Query.ListTaskProgress)
-		api.GET("/tasks/:taskId/milestones", d.Query.ListTaskMilestones)
-		api.GET("/tasks/:taskId/submissions", d.Query.ListTaskSubmissions)
-		api.GET("/tasks/:taskId/reviews", d.Query.ListTaskReviews)
-		api.GET("/tasks/:taskId/settlements", d.Query.ListTaskSettlements)
-		api.GET("/accounts", d.Query.ListAccounts)
-		api.GET("/accounts/:accountId", d.Query.GetAccount)
-		api.GET("/accounts/:accountId/agents", d.Query.ListAccountAgents)
-		api.GET("/executors/:executorId/history", d.Query.ExecutorHistory)
+		authed.GET("/tasks", d.Query.ListTasks)
+		authed.GET("/tasks/:taskId", d.Query.GetTask)
+		authed.GET("/tasks/:taskId/bids", d.Query.ListTaskBids)
+		authed.GET("/tasks/:taskId/progress", d.Query.ListTaskProgress)
+		authed.GET("/tasks/:taskId/milestones", d.Query.ListTaskMilestones)
+		authed.GET("/tasks/:taskId/submissions", d.Query.ListTaskSubmissions)
+		authed.GET("/tasks/:taskId/reviews", d.Query.ListTaskReviews)
+		authed.GET("/tasks/:taskId/settlements", d.Query.ListTaskSettlements)
+		authed.GET("/accounts", d.Query.ListAccounts)
+		authed.GET("/accounts/:accountId", d.Query.GetAccount)
+		authed.GET("/accounts/:accountId/agents", d.Query.ListAccountAgents)
+		authed.GET("/executors/:executorId/history", d.Query.ExecutorHistory)
 	}
 
 	webhooks := e.Group("/webhooks")

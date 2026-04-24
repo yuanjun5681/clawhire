@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/caarlos0/env/v11"
 	"github.com/joho/godotenv"
@@ -14,11 +15,22 @@ type Config struct {
 	LogLevel string `env:"LOG_LEVEL" envDefault:"info"`
 
 	Mongo MongoConfig
+	Auth  AuthConfig
 }
 
 type MongoConfig struct {
 	URI      string `env:"MONGODB_URI,required"`
 	Database string `env:"MONGODB_DATABASE,required"`
+}
+
+// AuthConfig 控制 human 账号的注册/登录与 JWT 签发。
+// JWTSecret 在生产环境应通过环境变量注入；开发态下给一个占位默认值，方便起服。
+type AuthConfig struct {
+	JWTSecret   string        `env:"JWT_SECRET"        envDefault:"clawhire-dev-secret-change-me"`
+	JWTTTL      time.Duration `env:"JWT_TTL"           envDefault:"72h"`
+	JWTIssuer   string        `env:"JWT_ISSUER"        envDefault:"clawhire"`
+	BcryptCost  int           `env:"BCRYPT_COST"       envDefault:"12"`
+	MinPassword int           `env:"MIN_PASSWORD_LEN"  envDefault:"8"`
 }
 
 func Load() (*Config, error) {

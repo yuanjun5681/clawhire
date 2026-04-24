@@ -259,6 +259,19 @@ func (writeEventRepo) ListByAggregate(context.Context, string, string, int, int)
 	return nil, 0, nil
 }
 
+// testAccountHeader 让测试通过请求头模拟已认证账号；handler 现在从 ctx 拿 accountId，
+// 因此用 testAuthStub 中间件把头字段搬到 ctx 里，和真实的 Auth 中间件行为对齐。
+const testAccountHeader = "X-Account-ID"
+
+func testAuthStub() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if v := c.GetHeader(testAccountHeader); v != "" {
+			c.Set(middleware.CtxKeyAccountID, v)
+		}
+		c.Next()
+	}
+}
+
 func TestWrite_CreateTask(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	taskRepo := newWriteTaskRepo()
@@ -278,11 +291,12 @@ func TestWrite_CreateTask(t *testing.T) {
 
 	e := gin.New()
 	e.Use(middleware.RequestID())
+	e.Use(testAuthStub())
 	e.POST("/api/tasks", w.CreateTask)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/tasks", bytes.NewBufferString(`{"taskId":"task_001","title":"Build landing page","category":"coding","reward":{"mode":"fixed","amount":300,"currency":"USD"}}`))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set(headerAccountID, "acct_human_001")
+	req.Header.Set(testAccountHeader, "acct_human_001")
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -329,11 +343,12 @@ func TestWrite_CreateBid(t *testing.T) {
 
 	e := gin.New()
 	e.Use(middleware.RequestID())
+	e.Use(testAuthStub())
 	e.POST("/api/tasks/:taskId/bids", w.CreateBid)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/tasks/task_001/bids", bytes.NewBufferString(`{"bidId":"bid_001","price":260,"currency":"USD","proposal":"Can deliver within 24 hours"}`))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set(headerAccountID, "acct_human_002")
+	req.Header.Set(testAccountHeader, "acct_human_002")
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -391,11 +406,12 @@ func TestWrite_AwardTask(t *testing.T) {
 
 	e := gin.New()
 	e.Use(middleware.RequestID())
+	e.Use(testAuthStub())
 	e.POST("/api/tasks/:taskId/award", w.AwardTask)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/tasks/task_001/award", bytes.NewBufferString(`{"contractId":"contract_001","executorId":"acct_agent_001","agreedReward":{"amount":260,"currency":"USD"}}`))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set(headerAccountID, "acct_human_001")
+	req.Header.Set(testAccountHeader, "acct_human_001")
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -448,11 +464,12 @@ func TestWrite_CreateSubmission(t *testing.T) {
 
 	e := gin.New()
 	e.Use(middleware.RequestID())
+	e.Use(testAuthStub())
 	e.POST("/api/tasks/:taskId/submissions", w.CreateSubmission)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/tasks/task_001/submissions", bytes.NewBufferString(`{"submissionId":"submission_001","summary":"Delivered landing page","artifacts":[{"type":"url","value":"https://example.com/result","label":"Preview"}]}`))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set(headerAccountID, "acct_human_002")
+	req.Header.Set(testAccountHeader, "acct_human_002")
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -509,11 +526,12 @@ func TestWrite_AcceptSubmission(t *testing.T) {
 
 	e := gin.New()
 	e.Use(middleware.RequestID())
+	e.Use(testAuthStub())
 	e.POST("/api/tasks/:taskId/accept", w.AcceptSubmission)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/tasks/task_001/accept", bytes.NewBufferString(`{"submissionId":"submission_001"}`))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set(headerAccountID, "acct_human_001")
+	req.Header.Set(testAccountHeader, "acct_human_001")
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -580,11 +598,12 @@ func TestWrite_RejectSubmission(t *testing.T) {
 
 	e := gin.New()
 	e.Use(middleware.RequestID())
+	e.Use(testAuthStub())
 	e.POST("/api/tasks/:taskId/reject", w.RejectSubmission)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/tasks/task_001/reject", bytes.NewBufferString(`{"submissionId":"submission_001","reason":"Missing test report"}`))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set(headerAccountID, "acct_human_001")
+	req.Header.Set(testAccountHeader, "acct_human_001")
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 

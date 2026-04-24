@@ -25,16 +25,22 @@ const instance = axios.create({
 
 instance.interceptors.request.use((config) => {
   const session = loadSessionSnapshot()
-  if (session?.accountId) {
+  if (session?.token) {
     config.headers = config.headers ?? {}
-    config.headers['X-Account-ID'] = session.accountId
+    config.headers['Authorization'] = `Bearer ${session.token}`
   }
   return config
 })
 
+// 401 处理器：避免 store 循环依赖，这里通过事件解耦。
+export const UNAUTHORIZED_EVENT = 'clawhire:unauthorized'
+
 instance.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ApiResponse<unknown>>) => {
+    if (error.response?.status === 401) {
+      window.dispatchEvent(new CustomEvent(UNAUTHORIZED_EVENT))
+    }
     const payload = error.response?.data
     if (payload && payload.success === false) {
       return Promise.reject(

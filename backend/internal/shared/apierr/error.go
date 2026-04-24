@@ -15,6 +15,8 @@ const (
 	CodeInvalidState           Code = "INVALID_STATE"
 	CodeNotFound               Code = "NOT_FOUND"
 	CodeForbidden              Code = "FORBIDDEN"
+	CodeUnauthorized           Code = "UNAUTHORIZED"
+	CodeConflict               Code = "CONFLICT"
 	CodeDuplicateEvent         Code = "DUPLICATE_EVENT"
 	CodeInternalError          Code = "INTERNAL_ERROR"
 )
@@ -55,11 +57,13 @@ func defaultStatus(c Code) int {
 	switch c {
 	case CodeInvalidRequest, CodeInvalidMessagePayload:
 		return http.StatusBadRequest
+	case CodeUnauthorized:
+		return http.StatusUnauthorized
 	case CodeForbidden:
 		return http.StatusForbidden
 	case CodeNotFound:
 		return http.StatusNotFound
-	case CodeDuplicateEvent:
+	case CodeConflict, CodeDuplicateEvent:
 		return http.StatusConflict
 	case CodeInvalidState, CodeUnsupportedMessageType:
 		return http.StatusUnprocessableEntity

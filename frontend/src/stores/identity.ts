@@ -7,6 +7,8 @@ export interface SessionSnapshot {
   accountId: string
   displayName: string
   accountType: 'human' | 'agent'
+  token: string
+  expiresAt?: string
 }
 
 export function loadSessionSnapshot(): SessionSnapshot | null {
@@ -14,7 +16,11 @@ export function loadSessionSnapshot(): SessionSnapshot | null {
     const raw = localStorage.getItem(SESSION_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as SessionSnapshot
-    if (!parsed?.accountId || !parsed.displayName) return null
+    if (!parsed?.accountId || !parsed.displayName || !parsed.token) return null
+    if (parsed.expiresAt && Date.parse(parsed.expiresAt) <= Date.now()) {
+      localStorage.removeItem(SESSION_KEY)
+      return null
+    }
     return parsed
   } catch {
     return null
@@ -31,13 +37,17 @@ export const useIdentityStore = defineStore('identity', () => {
   const currentAccountId = ref<string>(initial?.accountId ?? '')
   const displayName = ref<string>(initial?.displayName ?? '')
   const accountType = ref<'human' | 'agent'>(initial?.accountType ?? 'human')
+  const token = ref<string>(initial?.token ?? '')
+  const expiresAt = ref<string>(initial?.expiresAt ?? '')
 
-  const isLoggedIn = computed(() => Boolean(currentAccountId.value))
+  const isLoggedIn = computed(() => Boolean(currentAccountId.value && token.value))
 
   function signIn(snapshot: SessionSnapshot) {
     currentAccountId.value = snapshot.accountId
     displayName.value = snapshot.displayName
     accountType.value = snapshot.accountType
+    token.value = snapshot.token
+    expiresAt.value = snapshot.expiresAt ?? ''
     saveSessionSnapshot(snapshot)
   }
 
@@ -45,6 +55,8 @@ export const useIdentityStore = defineStore('identity', () => {
     currentAccountId.value = ''
     displayName.value = ''
     accountType.value = 'human'
+    token.value = ''
+    expiresAt.value = ''
     saveSessionSnapshot(null)
   }
 
@@ -52,6 +64,8 @@ export const useIdentityStore = defineStore('identity', () => {
     currentAccountId,
     displayName,
     accountType,
+    token,
+    expiresAt,
     isLoggedIn,
     signIn,
     signOut,

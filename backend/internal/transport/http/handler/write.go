@@ -16,8 +16,6 @@ import (
 	"github.com/yuanjun5681/clawhire/backend/internal/transport/http/middleware"
 )
 
-const headerAccountID = "X-Account-ID"
-
 type Write struct {
 	commands *appcmd.Service
 	accounts account.Repository
@@ -305,14 +303,14 @@ func (h *Write) RejectSubmission(c *gin.Context) {
 }
 
 func (h *Write) currentHumanActor(c *gin.Context) (shared.Actor, error) {
-	accountID := strings.TrimSpace(c.GetHeader(headerAccountID))
+	accountID := middleware.CurrentAccountID(c)
 	if accountID == "" {
-		return shared.Actor{}, apierr.New(apierr.CodeInvalidRequest, "missing X-Account-ID header")
+		return shared.Actor{}, apierr.New(apierr.CodeUnauthorized, "missing authenticated account")
 	}
 	acc, err := h.accounts.FindByID(c.Request.Context(), accountID)
 	if err != nil {
 		if err == account.ErrAccountNotFound {
-			return shared.Actor{}, apierr.Wrap(apierr.CodeNotFound, "find current account", err)
+			return shared.Actor{}, apierr.New(apierr.CodeUnauthorized, "authenticated account no longer exists")
 		}
 		return shared.Actor{}, apierr.Wrap(apierr.CodeInternalError, "find current account", err)
 	}

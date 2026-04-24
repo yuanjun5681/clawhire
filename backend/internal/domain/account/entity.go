@@ -26,6 +26,8 @@ type Account struct {
 	NodeID         string                 `bson:"nodeId,omitempty"           json:"nodeId,omitempty"`
 	OwnerAccountID string                 `bson:"ownerAccountId,omitempty"   json:"ownerAccountId,omitempty"`
 	Profile        map[string]interface{} `bson:"profile,omitempty"          json:"profile,omitempty"`
-	CreatedAt      time.Time              `bson:"createdAt"                  json:"createdAt"`
-	UpdatedAt      time.Time              `bson:"updatedAt"                  json:"updatedAt"`
+	// PasswordHash 仅针对 human 账号（注册登录凭据）。通过 json:"-" 确保查询接口不回显。
+	PasswordHash string    `bson:"passwordHash,omitempty"     json:"-"`
+	CreatedAt    time.Time `bson:"createdAt"                  json:"createdAt"`
+	UpdatedAt    time.Time `bson:"updatedAt"                  json:"updatedAt"`
 }

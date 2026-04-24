@@ -1,12 +1,36 @@
 import { USE_MOCK } from './config'
 import * as mock from './mock/auth'
-import { getAccount } from './accounts'
-import type { AccountDetail } from '@/types'
+import { httpPost } from './http'
+import type { AccountStatus, AccountType } from '@/types'
 
-export async function signIn(
-  accountId: string,
-  _password = '',
-): Promise<AccountDetail> {
-  if (USE_MOCK) return mock.signIn(accountId, _password)
-  return getAccount(accountId)
+export interface AuthResult {
+  token: string
+  expiresAt: string
+  account: {
+    accountId: string
+    type: AccountType
+    displayName: string
+    status: AccountStatus
+  }
+}
+
+export interface LoginInput {
+  accountId: string
+  password: string
+}
+
+export interface RegisterInput {
+  accountId: string
+  displayName: string
+  password: string
+}
+
+export async function login(input: LoginInput): Promise<AuthResult> {
+  if (USE_MOCK) return mock.login(input)
+  return httpPost<LoginInput, AuthResult>('/auth/login', input)
+}
+
+export async function register(input: RegisterInput): Promise<AuthResult> {
+  if (USE_MOCK) return mock.register(input)
+  return httpPost<RegisterInput, AuthResult>('/auth/register', input)
 }

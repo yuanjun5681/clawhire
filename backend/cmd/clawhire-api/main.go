@@ -7,8 +7,10 @@ import (
 	"syscall"
 	"time"
 
+	appauth "github.com/yuanjun5681/clawhire/backend/internal/application/auth"
 	appcmd "github.com/yuanjun5681/clawhire/backend/internal/application/command"
 	"github.com/yuanjun5681/clawhire/backend/internal/application/webhook"
+	infraauth "github.com/yuanjun5681/clawhire/backend/internal/infrastructure/auth"
 	"github.com/yuanjun5681/clawhire/backend/internal/infrastructure/config"
 	"github.com/yuanjun5681/clawhire/backend/internal/infrastructure/logx"
 	mgo "github.com/yuanjun5681/clawhire/backend/internal/infrastructure/mongo"
@@ -90,6 +92,15 @@ func main() {
 		Dispatcher: dispatcher,
 	})
 
+	// --- Auth 装配 ---
+	jwtIssuer := infraauth.NewJWTIssuer(cfg.Auth.JWTSecret, cfg.Auth.JWTTTL, cfg.Auth.JWTIssuer)
+	authSvc := appauth.NewService(appauth.Options{
+		Accounts:    accountRepo,
+		Issuer:      jwtIssuer,
+		BcryptCost:  cfg.Auth.BcryptCost,
+		MinPassword: cfg.Auth.MinPassword,
+	})
+
 	// --- HTTP 服务器 ---
 	srv := httpserver.NewServer(httpserver.Options{
 		Port:   cfg.HTTPPort,
@@ -101,6 +112,8 @@ func main() {
 		Health:          handler.NewHealth(mc),
 		ClawSynapseHook: handler.NewClawSynapseWebhook(webhookSvc, log),
 		Write:           handler.NewWrite(commandSvc, accountRepo),
+		Auth:            handler.NewAuth(authSvc),
+		JWTIssuer:       jwtIssuer,
 		Query: handler.NewQuery(
 			taskRepo,
 			bidRepo,
