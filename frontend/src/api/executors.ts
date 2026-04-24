@@ -1,6 +1,7 @@
 import { httpGetPaginated } from './http'
 import { USE_MOCK } from './config'
 import * as mock from './mock/executors'
+import { normalizeTaskListItem } from './normalizers'
 import type { Paginated, TaskListItem, TaskStatus } from '@/types'
 
 export interface ExecutorHistoryQuery {
@@ -14,7 +15,11 @@ export async function listExecutorHistory(
   query: ExecutorHistoryQuery = {},
 ): Promise<Paginated<TaskListItem>> {
   if (USE_MOCK) return mock.listExecutorHistory(executorId, query)
-  return httpGetPaginated<TaskListItem>(`/executors/${executorId}/history`, {
+  const res = await httpGetPaginated<TaskListItem>(`/executors/${executorId}/history`, {
     params: query,
   })
+  return {
+    ...res,
+    items: res.items.map(normalizeTaskListItem),
+  }
 }

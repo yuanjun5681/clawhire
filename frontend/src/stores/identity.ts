@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-const SESSION_KEY = 'clawhire.session'
+export const SESSION_KEY = 'clawhire.session'
 
 export interface SessionSnapshot {
   accountId: string
@@ -9,7 +9,7 @@ export interface SessionSnapshot {
   accountType: 'human' | 'agent'
 }
 
-function loadSession(): SessionSnapshot | null {
+export function loadSessionSnapshot(): SessionSnapshot | null {
   try {
     const raw = localStorage.getItem(SESSION_KEY)
     if (!raw) return null
@@ -21,13 +21,13 @@ function loadSession(): SessionSnapshot | null {
   }
 }
 
-function saveSession(s: SessionSnapshot | null) {
+export function saveSessionSnapshot(s: SessionSnapshot | null) {
   if (s) localStorage.setItem(SESSION_KEY, JSON.stringify(s))
   else localStorage.removeItem(SESSION_KEY)
 }
 
 export const useIdentityStore = defineStore('identity', () => {
-  const initial = loadSession()
+  const initial = loadSessionSnapshot()
   const currentAccountId = ref<string>(initial?.accountId ?? '')
   const displayName = ref<string>(initial?.displayName ?? '')
   const accountType = ref<'human' | 'agent'>(initial?.accountType ?? 'human')
@@ -38,14 +38,14 @@ export const useIdentityStore = defineStore('identity', () => {
     currentAccountId.value = snapshot.accountId
     displayName.value = snapshot.displayName
     accountType.value = snapshot.accountType
-    saveSession(snapshot)
+    saveSessionSnapshot(snapshot)
   }
 
   function signOut() {
     currentAccountId.value = ''
     displayName.value = ''
     accountType.value = 'human'
-    saveSession(null)
+    saveSessionSnapshot(null)
   }
 
   return {

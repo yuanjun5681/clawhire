@@ -1,5 +1,7 @@
 import axios, { AxiosError, type AxiosRequestConfig } from 'axios'
 import type { ApiResponse, ApiError, Paginated } from '@/types/common'
+import { API_BASE_URL } from './config'
+import { loadSessionSnapshot } from '@/stores/identity'
 
 export class ApiRequestError extends Error {
   code: string
@@ -14,11 +16,20 @@ export class ApiRequestError extends Error {
 }
 
 const instance = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE_URL,
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },
+})
+
+instance.interceptors.request.use((config) => {
+  const session = loadSessionSnapshot()
+  if (session?.accountId) {
+    config.headers = config.headers ?? {}
+    config.headers['X-Account-ID'] = session.accountId
+  }
+  return config
 })
 
 instance.interceptors.response.use(

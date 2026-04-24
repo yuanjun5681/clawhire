@@ -43,6 +43,8 @@ func RegisterRoutes(e *gin.Engine, d Deps) {
 		api.GET("/tasks/:taskId/reviews", d.Query.ListTaskReviews)
 		api.GET("/tasks/:taskId/settlements", d.Query.ListTaskSettlements)
 		api.GET("/accounts", d.Query.ListAccounts)
+		api.GET("/accounts/:accountId", d.Query.GetAccount)
+		api.GET("/accounts/:accountId/agents", d.Query.ListAccountAgents)
 		api.GET("/executors/:executorId/history", d.Query.ExecutorHistory)
 	}
 

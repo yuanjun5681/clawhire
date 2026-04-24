@@ -116,6 +116,9 @@ func (r *TaskRepo) List(ctx context.Context, f task.Filter) ([]*task.Task, int64
 	if f.ExecutorID != "" {
 		filter["assignedExecutor.id"] = f.ExecutorID
 	}
+	if f.ReviewerID != "" {
+		filter["reviewer.id"] = f.ReviewerID
+	}
 	if f.Keyword != "" {
 		rx := keywordRegex(f.Keyword)
 		filter["$or"] = bson.A{

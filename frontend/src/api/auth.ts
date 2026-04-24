@@ -1,15 +1,12 @@
-import { httpPost } from './http'
 import { USE_MOCK } from './config'
 import * as mock from './mock/auth'
+import { getAccount } from './accounts'
 import type { AccountDetail } from '@/types'
 
 export async function signIn(
   accountId: string,
-  password: string,
+  _password = '',
 ): Promise<AccountDetail> {
-  if (USE_MOCK) return mock.signIn(accountId, password)
-  return httpPost<{ accountId: string; password: string }, AccountDetail>(
-    '/auth/sign-in',
-    { accountId, password },
-  )
+  if (USE_MOCK) return mock.signIn(accountId, _password)
+  return getAccount(accountId)
 }

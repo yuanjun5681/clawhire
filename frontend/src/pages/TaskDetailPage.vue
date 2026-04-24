@@ -39,6 +39,7 @@ const submissions = ref<Submission[]>([])
 const reviews = ref<Review[]>([])
 const settlements = ref<Settlement[]>([])
 const toast = ref<string | null>(null)
+const actionSubmitting = ref(false)
 
 async function load() {
   if (!taskId.value) return
@@ -108,10 +109,10 @@ const actions = computed<ActionItem[]>(() => {
   const role = viewerRole.value
   const list: ActionItem[] = []
 
-  const canBid = role === 'visitor' && identity.accountType === 'agent'
+  const canBid = role === 'visitor' && identity.accountType === 'human'
   const bidDisabledReason =
-    role === 'visitor' && identity.accountType !== 'agent'
-      ? '仅 Agent 账号可报价'
+    role === 'visitor' && identity.accountType !== 'human'
+      ? '当前前端仅支持 Human HTTP 写接口'
       : undefined
 
   switch (t.status) {
@@ -131,21 +132,10 @@ const actions = computed<ActionItem[]>(() => {
       }
       break
     case 'AWARDED':
-      if (role === 'executor') {
-        list.push({ key: 'start', label: '开始执行', primary: true })
-        list.push({ key: 'decline', label: '放弃指派', danger: true })
-      }
-      if (role === 'requester') {
-        list.push({ key: 'reassign', label: '撤回指派' })
-      }
       break
     case 'IN_PROGRESS':
       if (role === 'executor') {
-        list.push({ key: 'report', label: '汇报进度' })
         list.push({ key: 'submit', label: '提交交付', primary: true })
-      }
-      if (role === 'requester') {
-        list.push({ key: 'dispute', label: '提交争议', danger: true })
       }
       break
     case 'SUBMITTED':
@@ -153,35 +143,13 @@ const actions = computed<ActionItem[]>(() => {
         list.push({ key: 'approve', label: '通过验收', primary: true })
         list.push({ key: 'reject', label: '驳回', danger: true })
       }
-      if (role === 'executor') {
-        list.push({
-          key: 'append',
-          label: '补交材料',
-          disabledReason: '等待验收方处理',
-        })
-      }
-      break
-    case 'ACCEPTED':
-      if (role === 'requester') {
-        list.push({ key: 'settle', label: '发起结算', primary: true })
-      }
-      break
-    case 'REJECTED':
-      if (role === 'executor') {
-        list.push({ key: 'resubmit', label: '重新提交', primary: true })
-      }
-      if (role === 'requester') {
-        list.push({ key: 'dispute', label: '提交争议', danger: true })
-      }
-      break
-    case 'DISPUTED':
-      if (role === 'requester' || role === 'executor') {
-        list.push({ key: 'evidence', label: '补充证据', primary: true })
-      }
       break
     case 'SETTLED':
     case 'CANCELLED':
     case 'EXPIRED':
+    case 'ACCEPTED':
+    case 'REJECTED':
+    case 'DISPUTED':
       break
   }
 
@@ -199,11 +167,126 @@ const emptyActionHint = computed(() => {
   return '当前阶段下你没有可执行的操作。'
 })
 
-function runAction(key: string) {
-  toast.value = `已触发操作：${key}（mock 环境暂未连接后端）`
+function nextId(prefix: string) {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `${prefix}_${crypto.randomUUID().slice(0, 8)}`
+  }
+  return `${prefix}_${Date.now()}`
+}
+
+function flash(message: string) {
+  toast.value = message
   window.setTimeout(() => {
     toast.value = null
   }, 2400)
+}
+
+async function runAction(key: string) {
+  if (!task.value || actionSubmitting.value) return
+
+  const currentTask = task.value
+  const latestSubmission = submissions.value[0]
+
+  try {
+    actionSubmitting.value = true
+    switch (key) {
+      case 'bid': {
+        const priceRaw = window.prompt('报价金额（USD）')
+        if (!priceRaw) return
+        const price = Number(priceRaw)
+        if (!Number.isFinite(price) || price <= 0) throw new Error('报价金额无效')
+        const proposal = window.prompt('报价说明（可选）')?.trim()
+        await tasksApi.createBid(currentTask.taskId, {
+          bidId: nextId('bid'),
+          price,
+          currency: currentTask.reward.currency || 'USD',
+          proposal: proposal || undefined,
+        })
+        flash('报价已提交')
+        break
+      }
+      case 'assign': {
+        const executorId = window.prompt('执行方账号 ID')
+        if (!executorId?.trim()) return
+        const amountRaw = window.prompt(
+          '约定金额',
+          String(currentTask.reward.amount),
+        )
+        if (!amountRaw) return
+        const amount = Number(amountRaw)
+        if (!Number.isFinite(amount) || amount <= 0) throw new Error('约定金额无效')
+        await tasksApi.awardTask(currentTask.taskId, {
+          contractId: nextId('contract'),
+          executorId: executorId.trim(),
+          agreedReward: {
+            amount,
+            currency: currentTask.reward.currency || 'USD',
+          },
+        })
+        flash('已完成指派')
+        break
+      }
+      case 'submit': {
+        const summary = window.prompt('交付摘要')
+        if (!summary?.trim()) return
+        const artifactUrl = window.prompt('交付链接（可选）')?.trim()
+        const evidenceUrl = window.prompt('证据链接（可选）')?.trim()
+        await tasksApi.createSubmission(currentTask.taskId, {
+          submissionId: nextId('submission'),
+          summary: summary.trim(),
+          artifacts: artifactUrl
+            ? [{ type: 'url', value: artifactUrl, label: 'Preview' }]
+            : [],
+          evidence:
+            evidenceUrl
+              ? {
+                  type: 'url',
+                  items: [evidenceUrl],
+                }
+              : undefined,
+        })
+        flash('交付已提交')
+        break
+      }
+      case 'approve': {
+        if (!latestSubmission) throw new Error('当前没有可验收的提交记录')
+        if (!window.confirm('确认通过当前交付？')) return
+        await tasksApi.acceptSubmission(currentTask.taskId, {
+          submissionId: latestSubmission.submissionId,
+          acceptedAt: new Date().toISOString(),
+        })
+        flash('已通过验收')
+        break
+      }
+      case 'reject': {
+        if (!latestSubmission) throw new Error('当前没有可驳回的提交记录')
+        const reason = window.prompt('请输入驳回原因')
+        if (!reason?.trim()) return
+        await tasksApi.rejectSubmission(currentTask.taskId, {
+          submissionId: latestSubmission.submissionId,
+          reason: reason.trim(),
+          rejectedAt: new Date().toISOString(),
+        })
+        flash('已驳回交付')
+        break
+      }
+      default:
+        flash(`当前前端尚未接入操作：${key}`)
+        return
+    }
+
+    await load()
+  } catch (e: unknown) {
+    flash(
+      e instanceof ApiRequestError
+        ? e.message
+        : e instanceof Error
+          ? e.message
+          : '操作失败',
+    )
+  } finally {
+    actionSubmitting.value = false
+  }
 }
 
 const timelineEvents = computed<TimelineEvent[]>(() => {
@@ -339,8 +422,8 @@ const rewardModeLabel = computed(() => {
   switch (task.value?.reward.mode) {
     case 'fixed':
       return '固定价'
-    case 'hourly':
-      return '按小时'
+    case 'bid':
+      return '竞价'
     case 'milestone':
       return '按里程碑'
     default:
@@ -352,10 +435,12 @@ const acceptanceModeLabel = computed(() => {
   switch (task.value?.acceptanceSpec.mode) {
     case 'manual':
       return '人工验收'
-    case 'auto':
-      return '自动验收'
-    case 'semi_auto':
-      return '半自动验收'
+    case 'schema':
+      return 'Schema 校验'
+    case 'test':
+      return '测试驱动'
+    case 'hybrid':
+      return '混合验收'
     default:
       return '—'
   }

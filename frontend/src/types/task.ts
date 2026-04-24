@@ -18,7 +18,7 @@ export type TaskStatus = (typeof TASK_STATUSES)[number]
 
 export type TaskCategory = string
 
-export type RewardMode = 'fixed' | 'hourly' | 'milestone'
+export type RewardMode = 'fixed' | 'bid' | 'milestone'
 
 export interface Reward {
   mode: RewardMode
@@ -26,7 +26,7 @@ export interface Reward {
   currency: string
 }
 
-export type AcceptanceMode = 'manual' | 'auto' | 'semi_auto'
+export type AcceptanceMode = 'manual' | 'schema' | 'test' | 'hybrid'
 
 export interface AcceptanceSpec {
   mode: AcceptanceMode

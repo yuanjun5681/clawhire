@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { ApiRequestError, accountsApi } from '@/api'
+import { ApiRequestError, accountsApi, executorsApi, tasksApi } from '@/api'
 import { useIdentityStore } from '@/stores/identity'
 import TaskCard from '@/components/TaskCard.vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -31,14 +31,34 @@ async function load() {
   loading.value = true
   apiError.value = null
   try {
-    const [a, s, r] = await Promise.all([
+    const [a, postedHead, postedSettledHead, executorHead, executorSettledHead] = await Promise.all([
       accountsApi.getAccount(accountId.value),
-      accountsApi.getAccountStats(accountId.value),
-      accountsApi.getAccountRecentTasks(accountId.value),
+      tasksApi.listTasks({ requesterId: accountId.value, page: 1, pageSize: 10 }),
+      tasksApi.listTasks({
+        requesterId: accountId.value,
+        status: 'SETTLED',
+        page: 1,
+        pageSize: 1,
+      }),
+      executorsApi.listExecutorHistory(accountId.value, { page: 1, pageSize: 10 }),
+      executorsApi.listExecutorHistory(accountId.value, {
+        status: 'SETTLED',
+        page: 1,
+        pageSize: 1,
+      }),
     ])
     account.value = a
-    stats.value = s
-    recentTasks.value = r
+    stats.value = {
+      postedCount: postedHead.total,
+      executedCount: executorHead.total,
+      settledCount: postedSettledHead.total + executorSettledHead.total,
+    }
+    recentTasks.value = [...postedHead.items, ...executorHead.items]
+      .filter(
+        (item, index, list) =>
+          list.findIndex((candidate) => candidate.taskId === item.taskId) === index,
+      )
+      .slice(0, 10)
     ownedAgents.value =
       a.type === 'human'
         ? await accountsApi.listAccountAgents(accountId.value)

@@ -15,6 +15,11 @@ type indexSpec struct {
 	model      mongo.IndexModel
 }
 
+type legacyIndexSpec struct {
+	collection string
+	name       string
+}
+
 func idx(coll, name string, keys bson.D) indexSpec {
 	return indexSpec{
 		collection: coll,
@@ -108,10 +113,48 @@ func indexSpecs() []indexSpec {
 	}
 }
 
+func legacyIndexSpecs() []legacyIndexSpec {
+	return []legacyIndexSpec{
+		// `contracts.taskId` 旧版曾使用普通索引 `ix_taskId`。
+		// 现在该约束已被“每个 task 最多一个 active contract”的部分唯一索引替代，
+		// 两者 key pattern 相同，Mongo 无法并存，因此启动时需要先清理遗留索引。
+		{collection: CollContracts, name: "ix_taskId"},
+	}
+}
+
 func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
+	if err := dropLegacyIndexes(ctx, db); err != nil {
+		return err
+	}
 	for _, s := range indexSpecs() {
 		if _, err := db.Collection(s.collection).Indexes().CreateOne(ctx, s.model); err != nil {
 			return fmt.Errorf("create index %s on %s: %w", s.name, s.collection, err)
+		}
+	}
+	return nil
+}
+
+func dropLegacyIndexes(ctx context.Context, db *mongo.Database) error {
+	for _, legacy := range legacyIndexSpecs() {
+		coll := db.Collection(legacy.collection)
+		specs, err := coll.Indexes().ListSpecifications(ctx)
+		if err != nil {
+			return fmt.Errorf("list indexes on %s: %w", legacy.collection, err)
+		}
+
+		found := false
+		for _, spec := range specs {
+			if spec.Name == legacy.name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			continue
+		}
+
+		if err := coll.Indexes().DropOne(ctx, legacy.name); err != nil {
+			return fmt.Errorf("drop legacy index %s on %s: %w", legacy.name, legacy.collection, err)
 		}
 	}
 	return nil

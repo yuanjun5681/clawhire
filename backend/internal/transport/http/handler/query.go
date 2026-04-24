@@ -69,6 +69,7 @@ type executorHistoryItem struct {
 	Title      string      `json:"title"`
 	Category   string      `json:"category"`
 	Status     task.Status `json:"status"`
+	Requester  interface{} `json:"requester"`
 	Reward     task.Reward `json:"reward"`
 	AcceptedAt *time.Time  `json:"acceptedAt,omitempty"`
 	SettledAt  *time.Time  `json:"settledAt,omitempty"`
@@ -209,6 +210,7 @@ func (h *Query) ExecutorHistory(c *gin.Context) {
 			Title:      item.Title,
 			Category:   item.Category,
 			Status:     item.Status,
+			Requester:  item.Requester,
 			Reward:     item.Reward,
 			AcceptedAt: acceptedAt,
 			SettledAt:  settledAt,
@@ -254,6 +256,29 @@ func (h *Query) ListAccounts(c *gin.Context) {
 	response.OKMeta(c, items, &response.Meta{Page: page, PageSize: pageSize, Total: total})
 }
 
+func (h *Query) GetAccount(c *gin.Context) {
+	item, err := h.accounts.FindByID(c.Request.Context(), c.Param("accountId"))
+	if err != nil {
+		response.FailErr(c, repoToHTTPError("get account", err))
+		return
+	}
+	response.OK(c, item)
+}
+
+func (h *Query) ListAccountAgents(c *gin.Context) {
+	page, pageSize, err := parsePage(c)
+	if err != nil {
+		response.FailErr(c, err)
+		return
+	}
+	items, total, err := h.accounts.ListAgentsByOwner(c.Request.Context(), c.Param("accountId"), page, pageSize)
+	if err != nil {
+		response.FailErr(c, apierr.Wrap(apierr.CodeInternalError, "list account agents", err))
+		return
+	}
+	response.OKMeta(c, items, &response.Meta{Page: page, PageSize: pageSize, Total: total})
+}
+
 func parseTaskFilter(c *gin.Context) (task.Filter, int, int, error) {
 	page, pageSize, err := parsePage(c)
 	if err != nil {
@@ -268,6 +293,7 @@ func parseTaskFilter(c *gin.Context) (task.Filter, int, int, error) {
 		Category:    strings.TrimSpace(c.Query("category")),
 		RequesterID: strings.TrimSpace(c.Query("requesterId")),
 		ExecutorID:  strings.TrimSpace(c.Query("executorId")),
+		ReviewerID:  strings.TrimSpace(c.Query("reviewerId")),
 		Keyword:     strings.TrimSpace(c.Query("keyword")),
 		Page:        page,
 		PageSize:    pageSize,

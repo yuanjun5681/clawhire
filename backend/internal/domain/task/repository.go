@@ -20,6 +20,7 @@ type Filter struct {
 	Category    string
 	RequesterID string
 	ExecutorID  string
+	ReviewerID  string
 	Keyword     string
 	Page        int
 	PageSize    int

@@ -44,6 +44,27 @@ func (r *queryTaskRepo) FindByID(_ context.Context, taskID string) (*task.Task, 
 func (r *queryTaskRepo) List(_ context.Context, f task.Filter) ([]*task.Task, int64, error) {
 	var list []*task.Task
 	for _, item := range r.items {
+		if len(f.Status) > 0 {
+			matched := false
+			for _, status := range f.Status {
+				if item.Status == status {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+		}
+		if f.RequesterID != "" && item.Requester.ID != f.RequesterID {
+			continue
+		}
+		if f.ExecutorID != "" && (item.AssignedExecutor == nil || item.AssignedExecutor.ID != f.ExecutorID) {
+			continue
+		}
+		if f.ReviewerID != "" && (item.Reviewer == nil || item.Reviewer.ID != f.ReviewerID) {
+			continue
+		}
 		cp := *item
 		list = append(list, &cp)
 	}
@@ -65,7 +86,13 @@ type queryAccountRepo struct {
 }
 
 func (r *queryAccountRepo) Insert(context.Context, *account.Account) error { return nil }
-func (r *queryAccountRepo) FindByID(context.Context, string) (*account.Account, error) {
+func (r *queryAccountRepo) FindByID(_ context.Context, accountID string) (*account.Account, error) {
+	for _, item := range r.items {
+		if item.AccountID == accountID {
+			cp := *item
+			return &cp, nil
+		}
+	}
 	return nil, account.ErrAccountNotFound
 }
 func (r *queryAccountRepo) FindByNodeID(context.Context, string) (*account.Account, error) {
@@ -74,8 +101,15 @@ func (r *queryAccountRepo) FindByNodeID(context.Context, string) (*account.Accou
 func (r *queryAccountRepo) List(context.Context, account.Filter) ([]*account.Account, int64, error) {
 	return r.items, int64(len(r.items)), nil
 }
-func (r *queryAccountRepo) ListAgentsByOwner(context.Context, string, int, int) ([]*account.Account, int64, error) {
-	return r.items, int64(len(r.items)), nil
+func (r *queryAccountRepo) ListAgentsByOwner(_ context.Context, ownerAccountID string, _ int, _ int) ([]*account.Account, int64, error) {
+	var items []*account.Account
+	for _, item := range r.items {
+		if item.Type == account.TypeAgent && item.OwnerAccountID == ownerAccountID {
+			cp := *item
+			items = append(items, &cp)
+		}
+	}
+	return items, int64(len(items)), nil
 }
 
 type emptyBidRepo struct{}
@@ -283,5 +317,153 @@ func TestQuery_ExecutorHistory(t *testing.T) {
 	}
 	if body.Data[0].SettledAt == nil || !body.Data[0].SettledAt.Equal(settledAt) {
 		t.Fatalf("unexpected settledAt: %+v", body.Data[0].SettledAt)
+	}
+}
+
+func TestQuery_GetAccount(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	e := gin.New()
+	q := NewQuery(
+		&queryTaskRepo{items: map[string]*task.Task{}},
+		emptyBidRepo{},
+		emptyProgressRepo{},
+		emptyMilestoneRepo{},
+		emptySubmissionRepo{},
+		reviewRepoStub{},
+		settlementRepoStub{},
+		&queryAccountRepo{items: []*account.Account{{
+			AccountID:   "acct_human_001",
+			Type:        account.TypeHuman,
+			DisplayName: "Alice",
+			Status:      account.StatusActive,
+		}}},
+	)
+	e.GET("/api/accounts/:accountId", q.GetAccount)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/accounts/acct_human_001", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	var body struct {
+		Success bool `json:"success"`
+		Data    struct {
+			AccountID string `json:"accountId"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode body: %v", err)
+	}
+	if !body.Success || body.Data.AccountID != "acct_human_001" {
+		t.Fatalf("unexpected body: %s", rec.Body.String())
+	}
+}
+
+func TestQuery_ListAccountAgents(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	e := gin.New()
+	q := NewQuery(
+		&queryTaskRepo{items: map[string]*task.Task{}},
+		emptyBidRepo{},
+		emptyProgressRepo{},
+		emptyMilestoneRepo{},
+		emptySubmissionRepo{},
+		reviewRepoStub{},
+		settlementRepoStub{},
+		&queryAccountRepo{items: []*account.Account{
+			{
+				AccountID:      "acct_agent_001",
+				Type:           account.TypeAgent,
+				DisplayName:    "BuilderBot",
+				Status:         account.StatusActive,
+				OwnerAccountID: "acct_human_001",
+			},
+			{
+				AccountID:      "acct_agent_002",
+				Type:           account.TypeAgent,
+				DisplayName:    "WriterBot",
+				Status:         account.StatusActive,
+				OwnerAccountID: "acct_human_002",
+			},
+		}},
+	)
+	e.GET("/api/accounts/:accountId/agents", q.ListAccountAgents)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/accounts/acct_human_001/agents", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	var body struct {
+		Success bool `json:"success"`
+		Data    []struct {
+			AccountID string `json:"accountId"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode body: %v", err)
+	}
+	if !body.Success || len(body.Data) != 1 || body.Data[0].AccountID != "acct_agent_001" {
+		t.Fatalf("unexpected body: %s", rec.Body.String())
+	}
+}
+
+func TestQuery_ListTasks_ByReviewer(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	taskRepo := &queryTaskRepo{items: map[string]*task.Task{
+		"task_001": {
+			TaskID:    "task_001",
+			Title:     "Review me",
+			Category:  "coding",
+			Status:    task.StatusSubmitted,
+			Requester: shared.Actor{ID: "acct_human_001", Kind: shared.ActorKindUser},
+			Reviewer:  &shared.Actor{ID: "acct_human_002", Kind: shared.ActorKindUser},
+			Reward:    task.Reward{Mode: task.RewardModeFixed, Amount: 100, Currency: "USD"},
+		},
+		"task_002": {
+			TaskID:    "task_002",
+			Title:     "Ignore me",
+			Category:  "coding",
+			Status:    task.StatusSubmitted,
+			Requester: shared.Actor{ID: "acct_human_001", Kind: shared.ActorKindUser},
+			Reviewer:  &shared.Actor{ID: "acct_human_003", Kind: shared.ActorKindUser},
+			Reward:    task.Reward{Mode: task.RewardModeFixed, Amount: 100, Currency: "USD"},
+		},
+	}}
+	e := gin.New()
+	q := NewQuery(
+		taskRepo,
+		emptyBidRepo{},
+		emptyProgressRepo{},
+		emptyMilestoneRepo{},
+		emptySubmissionRepo{},
+		reviewRepoStub{},
+		settlementRepoStub{},
+		&queryAccountRepo{},
+	)
+	e.GET("/api/tasks", q.ListTasks)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/tasks?reviewerId=acct_human_002&status=SUBMITTED", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	var body struct {
+		Success bool `json:"success"`
+		Data    []struct {
+			TaskID string `json:"taskId"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode body: %v", err)
+	}
+	if !body.Success || len(body.Data) != 1 || body.Data[0].TaskID != "task_001" {
+		t.Fatalf("unexpected body: %s", rec.Body.String())
 	}
 }
