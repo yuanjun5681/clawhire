@@ -14,8 +14,9 @@ type Config struct {
 	HTTPPort int    `env:"HTTP_PORT" envDefault:"8080"`
 	LogLevel string `env:"LOG_LEVEL" envDefault:"info"`
 
-	Mongo MongoConfig
-	Auth  AuthConfig
+	Mongo      MongoConfig
+	Auth       AuthConfig
+	ClawSynapse ClawSynapseConfig
 }
 
 type MongoConfig struct {
@@ -31,6 +32,12 @@ type AuthConfig struct {
 	JWTIssuer   string        `env:"JWT_ISSUER"        envDefault:"clawhire"`
 	BcryptCost  int           `env:"BCRYPT_COST"       envDefault:"12"`
 	MinPassword int           `env:"MIN_PASSWORD_LEN"  envDefault:"8"`
+}
+
+// ClawSynapseConfig 控制出站消息发布。NodeAPIURL 为空时禁用跨平台同步。
+type ClawSynapseConfig struct {
+	NodeAPIURL             string `env:"CLAWSYNAPSE_NODE_API_URL"`
+	DefaultTrustMeshNodeID string `env:"TRUSTMESH_PLATFORM_NODE_ID"`
 }
 
 func Load() (*Config, error) {

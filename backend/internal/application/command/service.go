@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/yuanjun5681/clawhire/backend/internal/application/platform"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/bid"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/contract"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/event"
@@ -31,6 +32,7 @@ type Service struct {
 	domainEvts  event.DomainEventRepository
 	sm          task.StateMachine
 	now         Now
+	syncPub     *platform.SyncPublisher // nil 时跳过跨平台同步
 }
 
 type Options struct {
@@ -42,6 +44,7 @@ type Options struct {
 	DomainEvts  event.DomainEventRepository
 	StateMach   task.StateMachine
 	Now         Now
+	SyncPub     *platform.SyncPublisher
 }
 
 type PostTaskCommand struct {
@@ -103,6 +106,7 @@ func NewService(opt Options) *Service {
 		domainEvts:  opt.DomainEvts,
 		sm:          sm,
 		now:         now,
+		syncPub:     opt.SyncPub,
 	}
 }
 

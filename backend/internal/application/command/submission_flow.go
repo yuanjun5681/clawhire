@@ -90,7 +90,13 @@ func (s *Service) AcceptSubmission(ctx context.Context, cmd AcceptSubmissionComm
 			return toAPIError("complete contract", err)
 		}
 	}
-	return s.recordDomainEvent(ctx, "task", payload.TaskID, cmd.Event, payload)
+	if err := s.recordDomainEvent(ctx, "task", payload.TaskID, cmd.Event, payload); err != nil {
+		return err
+	}
+	if s.syncPub != nil && t.AssignedExecutor != nil {
+		s.syncPub.NotifySubmissionAccepted(ctx, payload.TaskID, payload.SubmissionID, t.CurrentContractID, t.AssignedExecutor.ID, payload.AcceptedAt)
+	}
+	return nil
 }
 
 func (s *Service) RejectSubmission(ctx context.Context, cmd RejectSubmissionCommand) error {
@@ -134,5 +140,11 @@ func (s *Service) RejectSubmission(ctx context.Context, cmd RejectSubmissionComm
 	if err := s.tasks.UpdateStatus(ctx, payload.TaskID, t.Status, next, at); err != nil {
 		return toAPIError("update task status", err)
 	}
-	return s.recordDomainEvent(ctx, "task", payload.TaskID, cmd.Event, payload)
+	if err := s.recordDomainEvent(ctx, "task", payload.TaskID, cmd.Event, payload); err != nil {
+		return err
+	}
+	if s.syncPub != nil && t.AssignedExecutor != nil {
+		s.syncPub.NotifySubmissionRejected(ctx, payload.TaskID, payload.SubmissionID, payload.Reason, t.AssignedExecutor.ID, payload.RejectedAt)
+	}
+	return nil
 }

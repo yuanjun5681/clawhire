@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/v2/bson"
 
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/account"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/bid"
@@ -21,6 +22,8 @@ import (
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/task"
 	mgo "github.com/yuanjun5681/clawhire/backend/internal/infrastructure/mongo"
 )
+
+func newOID() bson.ObjectID { return bson.NewObjectID() }
 
 func mongoTestClient(t *testing.T) *mgo.Client {
 	t.Helper()
@@ -300,5 +303,109 @@ func TestSubmissionReviewSettlementAccountAndEventRepos_RealMongo(t *testing.T) 
 	domainEvents, total, err := domainRepo.ListByAggregate(ctx, "task", "task_001", 1, 20)
 	if err != nil || total != 1 || len(domainEvents) != 1 {
 		t.Fatalf("list domain events: total=%d len=%d err=%v", total, len(domainEvents), err)
+	}
+}
+
+func TestPlatformConnectionRepo_Lifecycle(t *testing.T) {
+	client := mongoTestClient(t)
+	repo := NewPlatformConnectionRepo(client.DB())
+	ctx := context.Background()
+
+	conn1 := &account.PlatformConnection{
+		ID:             newOID(),
+		Platform:       "trustmesh",
+		PlatformNodeID: "node_trustmesh_prod",
+		LocalUserID:    "acct_alice",
+		RemoteUserID:   "usr_xxxx",
+	}
+	conn2 := &account.PlatformConnection{
+		ID:             newOID(),
+		Platform:       "trustmesh",
+		PlatformNodeID: "node_trustmesh_staging",
+		LocalUserID:    "acct_alice",
+		RemoteUserID:   "usr_yyyy",
+	}
+
+	// Insert
+	if err := repo.Insert(ctx, conn1); err != nil {
+		t.Fatalf("insert conn1: %v", err)
+	}
+	if err := repo.Insert(ctx, conn2); err != nil {
+		t.Fatalf("insert conn2: %v", err)
+	}
+
+	// Duplicate returns ErrConnectionExists
+	dup := &account.PlatformConnection{
+		ID:             newOID(),
+		Platform:       "trustmesh",
+		PlatformNodeID: "node_trustmesh_prod",
+		LocalUserID:    "acct_alice",
+		RemoteUserID:   "usr_other",
+	}
+	if err := repo.Insert(ctx, dup); !errors.Is(err, account.ErrConnectionExists) {
+		t.Fatalf("expected ErrConnectionExists, got %v", err)
+	}
+
+	// FindByLocalUser - all
+	all, err := repo.FindByLocalUser(ctx, "acct_alice", "")
+	if err != nil {
+		t.Fatalf("FindByLocalUser: %v", err)
+	}
+	if len(all) != 2 {
+		t.Fatalf("expected 2 connections, got %d", len(all))
+	}
+
+	// FindByLocalUser - filtered by platform
+	byPlatform, err := repo.FindByLocalUser(ctx, "acct_alice", "trustmesh")
+	if err != nil {
+		t.Fatalf("FindByLocalUser by platform: %v", err)
+	}
+	if len(byPlatform) != 2 {
+		t.Fatalf("expected 2 trustmesh connections, got %d", len(byPlatform))
+	}
+
+	// FindByLocalUser - returns empty for other user
+	others, err := repo.FindByLocalUser(ctx, "acct_bob", "")
+	if err != nil {
+		t.Fatalf("FindByLocalUser other user: %v", err)
+	}
+	if len(others) != 0 {
+		t.Fatalf("expected 0 connections for bob, got %d", len(others))
+	}
+
+	// FindByRemote
+	found, err := repo.FindByRemote(ctx, "node_trustmesh_prod", "usr_xxxx")
+	if err != nil {
+		t.Fatalf("FindByRemote: %v", err)
+	}
+	if found.LocalUserID != "acct_alice" {
+		t.Errorf("localUserId = %q", found.LocalUserID)
+	}
+
+	// FindByRemote - not found
+	if _, err := repo.FindByRemote(ctx, "node_trustmesh_prod", "usr_nobody"); !errors.Is(err, account.ErrConnectionNotFound) {
+		t.Fatalf("expected ErrConnectionNotFound, got %v", err)
+	}
+
+	// Delete
+	if err := repo.DeleteByLocalUserAndNode(ctx, "acct_alice", "node_trustmesh_prod"); err != nil {
+		t.Fatalf("DeleteByLocalUserAndNode: %v", err)
+	}
+
+	// Confirm deleted
+	remaining, err := repo.FindByLocalUser(ctx, "acct_alice", "")
+	if err != nil {
+		t.Fatalf("FindByLocalUser after delete: %v", err)
+	}
+	if len(remaining) != 1 {
+		t.Fatalf("expected 1 remaining connection, got %d", len(remaining))
+	}
+	if remaining[0].PlatformNodeID != "node_trustmesh_staging" {
+		t.Errorf("remaining connection = %+v", remaining[0])
+	}
+
+	// Delete not found
+	if err := repo.DeleteByLocalUserAndNode(ctx, "acct_alice", "node_trustmesh_prod"); !errors.Is(err, account.ErrConnectionNotFound) {
+		t.Fatalf("expected ErrConnectionNotFound on re-delete, got %v", err)
 	}
 }

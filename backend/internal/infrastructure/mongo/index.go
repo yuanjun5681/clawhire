@@ -110,6 +110,14 @@ func indexSpecs() []indexSpec {
 		// domain_events
 		uniqueIdx(CollDomainEvents, "uk_eventId", bson.D{{Key: "eventId", Value: 1}}),
 		idx(CollDomainEvents, "ix_aggregate_createdAt", bson.D{{Key: "aggregateType", Value: 1}, {Key: "aggregateId", Value: 1}, {Key: "createdAt", Value: -1}}),
+
+		// platform_connections
+		// 同一账号不能重复绑定同一节点实例
+		uniqueIdx(CollPlatformConnections, "uk_localUser_platformNode", bson.D{{Key: "localUserId", Value: 1}, {Key: "platformNodeId", Value: 1}}),
+		// 按平台类型查询某账号的所有连接
+		idx(CollPlatformConnections, "ix_platform_localUser", bson.D{{Key: "platform", Value: 1}, {Key: "localUserId", Value: 1}}),
+		// 收到外部事件时反查本地账号
+		idx(CollPlatformConnections, "ix_platformNode_remoteUser", bson.D{{Key: "platformNodeId", Value: 1}, {Key: "remoteUserId", Value: 1}}),
 	}
 }
 

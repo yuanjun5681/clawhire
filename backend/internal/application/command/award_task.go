@@ -71,5 +71,11 @@ func (s *Service) AwardTask(ctx context.Context, cmd AwardTaskCommand) error {
 			return apierr.Wrap(apierr.CodeInternalError, "invalidate other bids", err)
 		}
 	}
-	return s.recordDomainEvent(ctx, "task", payload.TaskID, cmd.Event, payload)
+	if err := s.recordDomainEvent(ctx, "task", payload.TaskID, cmd.Event, payload); err != nil {
+		return err
+	}
+	if s.syncPub != nil {
+		s.syncPub.NotifyTaskAwarded(ctx, t, payload.ContractID, payload.Executor.ID)
+	}
+	return nil
 }

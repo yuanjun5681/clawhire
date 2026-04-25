@@ -16,6 +16,7 @@ type Deps struct {
 	Query           *handler.Query
 	Write           *handler.Write
 	Auth            *handler.Auth
+	Connections     *handler.Connections
 	JWTIssuer       *infraauth.JWTIssuer
 }
 
@@ -48,6 +49,11 @@ func RegisterRoutes(e *gin.Engine, d Deps) {
 		authed.POST("/tasks/:taskId/submissions", d.Write.CreateSubmission)
 		authed.POST("/tasks/:taskId/accept", d.Write.AcceptSubmission)
 		authed.POST("/tasks/:taskId/reject", d.Write.RejectSubmission)
+	}
+	if d.Connections != nil {
+		authed.GET("/accounts/me/connections", d.Connections.ListConnections)
+		authed.POST("/accounts/me/connections", d.Connections.CreateConnection)
+		authed.DELETE("/accounts/me/connections/:platform", d.Connections.DeleteConnection)
 	}
 	if d.Query != nil {
 		authed.GET("/tasks", d.Query.ListTasks)

@@ -9,8 +9,10 @@ import (
 
 	appauth "github.com/yuanjun5681/clawhire/backend/internal/application/auth"
 	appcmd "github.com/yuanjun5681/clawhire/backend/internal/application/command"
+	"github.com/yuanjun5681/clawhire/backend/internal/application/platform"
 	"github.com/yuanjun5681/clawhire/backend/internal/application/webhook"
 	infraauth "github.com/yuanjun5681/clawhire/backend/internal/infrastructure/auth"
+	"github.com/yuanjun5681/clawhire/backend/internal/infrastructure/clawsynapse"
 	"github.com/yuanjun5681/clawhire/backend/internal/infrastructure/config"
 	"github.com/yuanjun5681/clawhire/backend/internal/infrastructure/logx"
 	mgo "github.com/yuanjun5681/clawhire/backend/internal/infrastructure/mongo"
@@ -55,6 +57,7 @@ func main() {
 	// --- 仓储装配 ---
 	rawRepo := repository.NewRawEventRepo(mc.DB())
 	domainEventRepo := repository.NewDomainEventRepo(mc.DB())
+	platformConnRepo := repository.NewPlatformConnectionRepo(mc.DB())
 	taskRepo := repository.NewTaskRepo(mc.DB())
 	bidRepo := repository.NewBidRepo(mc.DB())
 	contractRepo := repository.NewContractRepo(mc.DB())
@@ -65,6 +68,17 @@ func main() {
 	settlementRepo := repository.NewSettlementRepo(mc.DB())
 	accountRepo := repository.NewAccountRepo(mc.DB())
 
+	// --- ClawSynapse 跨平台同步装配（NodeAPIURL 为空时禁用）---
+	var syncPub *platform.SyncPublisher
+	if cfg.ClawSynapse.NodeAPIURL != "" {
+		synapseClient := clawsynapse.NewClient(cfg.ClawSynapse.NodeAPIURL)
+		syncPub = platform.NewSyncPublisher(platformConnRepo, synapseClient, log)
+		log.WithFields(map[string]interface{}{
+			"nodeAPIURL":             cfg.ClawSynapse.NodeAPIURL,
+			"defaultTrustMeshNodeID": cfg.ClawSynapse.DefaultTrustMeshNodeID,
+		}).Info("clawsynapse sync publisher enabled")
+	}
+
 	// --- 应用层装配 ---
 	commandSvc := appcmd.NewService(appcmd.Options{
 		Tasks:       taskRepo,
@@ -73,6 +87,7 @@ func main() {
 		Submissions: submissionRepo,
 		Reviews:     reviewRepo,
 		DomainEvts:  domainEventRepo,
+		SyncPub:     syncPub,
 	})
 	dispatcher := webhook.NewCommandDispatcher(webhook.CommandDispatcherOptions{
 		Tasks:       taskRepo,
@@ -107,12 +122,18 @@ func main() {
 		AppEnv: cfg.AppEnv,
 		Log:    log,
 	})
+	defaultNodes := map[string]string{}
+	if cfg.ClawSynapse.DefaultTrustMeshNodeID != "" {
+		defaultNodes["trustmesh"] = cfg.ClawSynapse.DefaultTrustMeshNodeID
+	}
+
 	httpserver.RegisterRoutes(srv.Engine(), httpserver.Deps{
 		Log:             log,
 		Health:          handler.NewHealth(mc),
 		ClawSynapseHook: handler.NewClawSynapseWebhook(webhookSvc, log),
 		Write:           handler.NewWrite(commandSvc, accountRepo),
 		Auth:            handler.NewAuth(authSvc),
+		Connections:     handler.NewConnections(platformConnRepo, defaultNodes),
 		JWTIssuer:       jwtIssuer,
 		Query: handler.NewQuery(
 			taskRepo,
