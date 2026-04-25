@@ -1,17 +1,20 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { ApiRequestError, accountsApi, executorsApi, tasksApi } from '@/api'
+import { ApiRequestError, accountsApi, connectionsApi, executorsApi, tasksApi } from '@/api'
 import { useIdentityStore } from '@/stores/identity'
+import { useToastStore } from '@/stores/toast'
 import TaskCard from '@/components/TaskCard.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import ErrorState from '@/components/ErrorState.vue'
-import { UiAvatar, UiBadge, UiStat } from '@/components/ui'
+import ConnectPlatformModal from '@/components/ConnectPlatformModal.vue'
+import { UiAvatar, UiBadge, UiButton, UiStat } from '@/components/ui'
 import { formatDate, formatDateTime } from '@/utils/format'
 import type {
   AccountDetail,
   AccountListItem,
   AccountStats,
+  PlatformConnection,
   TaskListItem,
 } from '@/types'
 
@@ -78,14 +81,63 @@ async function load() {
   }
 }
 
-onMounted(load)
-watch(accountId, load)
+onMounted(async () => {
+  await load()
+  await loadConnections()
+})
+watch(accountId, async () => {
+  await load()
+  await loadConnections()
+})
+
+const toast = useToastStore()
 
 const isSelf = computed(
   () => account.value?.accountId === identity.currentAccountId,
 )
 
 const isAgent = computed(() => account.value?.type === 'agent')
+
+// --- 平台连接 ---
+const connections = ref<PlatformConnection[]>([])
+const connectionsLoading = ref(false)
+const showConnectModal = ref(false)
+const deletingNodeId = ref<string | null>(null)
+
+const PLATFORM_LABEL: Record<string, string> = { trustmesh: 'TrustMesh' }
+
+async function loadConnections() {
+  if (!isSelf.value) return
+  connectionsLoading.value = true
+  try {
+    connections.value = await connectionsApi.listConnections()
+  } catch {
+    // 静默失败，不影响主页面
+  } finally {
+    connectionsLoading.value = false
+  }
+}
+
+function onConnectionCreated(conn: PlatformConnection) {
+  connections.value.push(conn)
+  toast.success(`已绑定 ${PLATFORM_LABEL[conn.platform] ?? conn.platform}`)
+}
+
+async function removeConnection(conn: PlatformConnection) {
+  if (deletingNodeId.value) return
+  deletingNodeId.value = conn.platformNodeId
+  try {
+    await connectionsApi.deleteConnection(conn.platform, conn.platformNodeId)
+    connections.value = connections.value.filter(
+      (c) => c.platformNodeId !== conn.platformNodeId,
+    )
+    toast.info('已解除平台绑定')
+  } catch {
+    toast.error('解除失败，请重试')
+  } finally {
+    deletingNodeId.value = null
+  }
+}
 
 const STATUS_TONE: Record<string, 'success' | 'neutral' | 'warning'> = {
   active: 'success',
@@ -207,6 +259,98 @@ const TYPE_LABEL = { human: '人类', agent: 'Agent' } as const
           </template>
         </UiStat>
       </div>
+
+      <!-- Platform connections (self only) -->
+      <section
+        v-if="isSelf"
+        class="rounded-box border border-base-300/70 bg-base-100 p-5"
+      >
+        <header class="mb-4 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <svg
+              class="h-4 w-4 text-primary"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+            </svg>
+            <h2 class="text-sm font-semibold tracking-tight">平台连接</h2>
+          </div>
+          <UiButton size="xs" variant="outline" @click="showConnectModal = true">
+            <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            添加连接
+          </UiButton>
+        </header>
+
+        <!-- Loading -->
+        <div v-if="connectionsLoading" class="space-y-2">
+          <div class="h-14 animate-pulse rounded-field bg-base-200" />
+          <div class="h-14 animate-pulse rounded-field bg-base-200" />
+        </div>
+
+        <!-- Empty -->
+        <EmptyState
+          v-else-if="connections.length === 0"
+          title="暂未连接任何平台"
+          description="添加连接后，任务事件将自动同步至对方平台。"
+        />
+
+        <!-- Connection list -->
+        <ul v-else class="space-y-2">
+          <li
+            v-for="conn in connections"
+            :key="conn.platformNodeId"
+            class="flex items-center gap-3 rounded-field border border-base-300/70 bg-base-100 px-4 py-3"
+          >
+            <!-- Platform badge -->
+            <span
+              class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[linear-gradient(120deg,#6366f1,#8b5cf6)] text-[10px] font-bold text-white"
+            >
+              TM
+            </span>
+
+            <!-- Info -->
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-1.5">
+                <span class="text-sm font-medium">
+                  {{ PLATFORM_LABEL[conn.platform] ?? conn.platform }}
+                </span>
+                <span class="rounded-full bg-base-200 px-2 py-0.5 font-mono text-[10px] text-base-content/60">
+                  {{ conn.remoteUserId }}
+                </span>
+              </div>
+              <p class="mt-0.5 truncate font-mono text-[11px] text-base-content/45">
+                {{ conn.platformNodeId }} · 绑定于 {{ formatDate(conn.linkedAt) }}
+              </p>
+            </div>
+
+            <!-- Remove -->
+            <button
+              type="button"
+              :disabled="deletingNodeId === conn.platformNodeId"
+              class="shrink-0 rounded-field px-2.5 py-1 text-[11px] font-medium text-error/70 transition hover:bg-error/10 hover:text-error disabled:opacity-40"
+              @click="removeConnection(conn)"
+            >
+              <span v-if="deletingNodeId === conn.platformNodeId" class="inline-block h-3 w-3 animate-spin rounded-full border-2 border-error border-b-transparent" />
+              <span v-else>解除</span>
+            </button>
+          </li>
+        </ul>
+      </section>
+
+      <ConnectPlatformModal
+        :open="showConnectModal"
+        @close="showConnectModal = false"
+        @created="onConnectionCreated"
+      />
 
       <!-- Owned agents -->
       <section

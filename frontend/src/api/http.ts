@@ -96,4 +96,12 @@ export async function httpPost<TReq, TRes>(
   return unwrap(res.data, res.status)
 }
 
+export async function httpDelete<TRes = void>(
+  url: string,
+  config?: AxiosRequestConfig,
+): Promise<TRes> {
+  const res = await instance.delete<ApiResponse<TRes>>(url, config)
+  return unwrap(res.data, res.status)
+}
+
 export { instance as httpClient }
