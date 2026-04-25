@@ -15,6 +15,7 @@ import type { ActionItem } from '@/components/ActionBar.vue'
 import Timeline from '@/components/Timeline.vue'
 import type { TimelineEvent } from '@/components/Timeline.vue'
 import ErrorState from '@/components/ErrorState.vue'
+import AwardModal from '@/components/AwardModal.vue'
 import { UiBadge } from '@/components/ui'
 import { formatDate, formatDateTime, formatReward } from '@/utils/format'
 import type {
@@ -42,6 +43,7 @@ const submissions = ref<Submission[]>([])
 const reviews = ref<Review[]>([])
 const settlements = ref<Settlement[]>([])
 const actionSubmitting = ref(false)
+const showAwardModal = ref(false)
 
 async function load() {
   if (!taskId.value) return
@@ -201,25 +203,8 @@ async function runAction(key: string) {
         break
       }
       case 'assign': {
-        const executorId = window.prompt('执行方账号 ID')
-        if (!executorId?.trim()) return
-        const amountRaw = window.prompt(
-          '约定金额',
-          String(currentTask.reward.amount),
-        )
-        if (!amountRaw) return
-        const amount = Number(amountRaw)
-        if (!Number.isFinite(amount) || amount <= 0) throw new Error('约定金额无效')
-        await tasksApi.awardTask(currentTask.taskId, {
-          contractId: nextId('contract'),
-          executorId: executorId.trim(),
-          agreedReward: {
-            amount,
-            currency: currentTask.reward.currency || 'USD',
-          },
-        })
-        toast.success('已完成指派')
-        break
+        showAwardModal.value = true
+        return
       }
       case 'submit': {
         const summary = window.prompt('交付摘要')
@@ -278,6 +263,24 @@ async function runAction(key: string) {
         : e instanceof Error
           ? e.message
           : '操作失败',
+      '操作失败',
+    )
+  } finally {
+    actionSubmitting.value = false
+  }
+}
+
+async function handleAward(payload: import('@/api/tasks').AwardTaskInput) {
+  if (!task.value) return
+  showAwardModal.value = false
+  try {
+    actionSubmitting.value = true
+    await tasksApi.awardTask(task.value.taskId, payload)
+    toast.success('已完成指派')
+    await load()
+  } catch (e: unknown) {
+    toast.error(
+      e instanceof ApiRequestError ? e.message : e instanceof Error ? e.message : '操作失败',
       '操作失败',
     )
   } finally {
@@ -444,6 +447,15 @@ const acceptanceModeLabel = computed(() => {
       <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
       <span class="text-base-content/70">任务详情</span>
     </nav>
+
+    <AwardModal
+      v-if="task"
+      :open="showAwardModal"
+      :task="task"
+      :bids="bids"
+      @close="showAwardModal = false"
+      @award="handleAward"
+    />
 
     <div v-if="loading" class="grid grid-cols-1 gap-4 md:grid-cols-12">
       <div class="space-y-4 md:col-span-8">

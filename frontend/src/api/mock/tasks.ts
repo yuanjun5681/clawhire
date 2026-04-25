@@ -1,7 +1,14 @@
 import { ApiRequestError } from '../http'
-import { accounts, tasks } from './db'
+import { accounts, bids, tasks } from './db'
 import { delay, paginate } from './util'
-import type { CreateTaskInput } from '../tasks'
+import type {
+  AcceptSubmissionInput,
+  AwardTaskInput,
+  CreateBidInput,
+  CreateSubmissionInput,
+  CreateTaskInput,
+  RejectSubmissionInput,
+} from '../tasks'
 import type {
   Paginated,
   TaskDetail,
@@ -127,4 +134,101 @@ export async function createTask(
   }
   tasks.unshift(detail)
   return delay({ taskId: input.taskId })
+}
+
+export async function createBid(
+  taskId: string,
+  input: CreateBidInput,
+): Promise<{ taskId: string; bidId: string }> {
+  const t = tasks.find((x) => x.taskId === taskId)
+  if (!t) throw new ApiRequestError({ code: 'NOT_FOUND', message: 'task not found' }, 404)
+  const taskBids = (bids[taskId] ??= [])
+  taskBids.push({
+    bidId: input.bidId,
+    taskId,
+    executor: { id: accounts[0].accountId, kind: accounts[0].type, name: accounts[0].displayName },
+    price: input.price,
+    currency: input.currency,
+    proposal: input.proposal,
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+  })
+  if (t.status === 'OPEN') t.status = 'BIDDING'
+  t.updatedAt = new Date().toISOString()
+  return delay({ taskId, bidId: input.bidId })
+}
+
+export async function awardTask(
+  taskId: string,
+  input: AwardTaskInput,
+): Promise<{ taskId: string; contractId: string }> {
+  const t = tasks.find((x) => x.taskId === taskId)
+  if (!t) throw new ApiRequestError({ code: 'NOT_FOUND', message: 'task not found' }, 404)
+  const executorAccount = accounts.find((a) => a.accountId === input.executorId)
+  if (!executorAccount)
+    throw new ApiRequestError({ code: 'NOT_FOUND', message: 'executor account not found' }, 404)
+  t.assignedExecutor = {
+    id: executorAccount.accountId,
+    kind: executorAccount.type,
+    name: executorAccount.displayName,
+    nodeId: executorAccount.nodeId,
+  }
+  t.status = 'AWARDED'
+  t.reward = input.agreedReward
+  t.updatedAt = new Date().toISOString()
+  const taskBids = bids[taskId] ?? []
+  for (const b of taskBids) {
+    b.status = b.executor.id === input.executorId ? 'accepted' : 'rejected'
+  }
+  return delay({ taskId, contractId: input.contractId })
+}
+
+export async function createSubmission(
+  taskId: string,
+  input: CreateSubmissionInput,
+): Promise<{ taskId: string; submissionId: string }> {
+  const t = tasks.find((x) => x.taskId === taskId)
+  if (!t) throw new ApiRequestError({ code: 'NOT_FOUND', message: 'task not found' }, 404)
+  const { submissions } = await import('./db')
+  const list = (submissions[taskId] ??= [])
+  list.unshift({
+    submissionId: input.submissionId,
+    taskId,
+    executor: t.assignedExecutor ?? { id: 'unknown', kind: 'human', name: 'Unknown' },
+    summary: input.summary,
+    artifacts: input.artifacts.map((a) => ({ name: a.label ?? a.value, url: a.value })),
+    status: 'pending_review',
+    submittedAt: new Date().toISOString(),
+  })
+  t.status = 'SUBMITTED'
+  t.updatedAt = new Date().toISOString()
+  return delay({ taskId, submissionId: input.submissionId })
+}
+
+export async function acceptSubmission(
+  taskId: string,
+  input: AcceptSubmissionInput,
+): Promise<{ taskId: string; submissionId: string }> {
+  const t = tasks.find((x) => x.taskId === taskId)
+  if (!t) throw new ApiRequestError({ code: 'NOT_FOUND', message: 'task not found' }, 404)
+  const { submissions } = await import('./db')
+  const sub = (submissions[taskId] ?? []).find((s) => s.submissionId === input.submissionId)
+  if (sub) sub.status = 'accepted'
+  t.status = 'ACCEPTED'
+  t.updatedAt = new Date().toISOString()
+  return delay({ taskId, submissionId: input.submissionId })
+}
+
+export async function rejectSubmission(
+  taskId: string,
+  input: RejectSubmissionInput,
+): Promise<{ taskId: string; submissionId: string }> {
+  const t = tasks.find((x) => x.taskId === taskId)
+  if (!t) throw new ApiRequestError({ code: 'NOT_FOUND', message: 'task not found' }, 404)
+  const { submissions } = await import('./db')
+  const sub = (submissions[taskId] ?? []).find((s) => s.submissionId === input.submissionId)
+  if (sub) sub.status = 'rejected'
+  t.status = 'REJECTED'
+  t.updatedAt = new Date().toISOString()
+  return delay({ taskId, submissionId: input.submissionId })
 }

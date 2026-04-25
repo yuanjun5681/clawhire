@@ -95,6 +95,7 @@ export interface RejectSubmissionInput {
 }
 
 export async function createBid(taskId: string, payload: CreateBidInput) {
+  if (USE_MOCK) return mock.createBid(taskId, payload)
   return httpPost<CreateBidInput, { taskId: string; bidId: string; eventId?: string }>(
     `/tasks/${taskId}/bids`,
     payload,
@@ -102,6 +103,7 @@ export async function createBid(taskId: string, payload: CreateBidInput) {
 }
 
 export async function awardTask(taskId: string, payload: AwardTaskInput) {
+  if (USE_MOCK) return mock.awardTask(taskId, payload)
   return httpPost<AwardTaskInput, { taskId: string; contractId: string; eventId?: string }>(
     `/tasks/${taskId}/award`,
     payload,
@@ -109,6 +111,7 @@ export async function awardTask(taskId: string, payload: AwardTaskInput) {
 }
 
 export async function createSubmission(taskId: string, payload: CreateSubmissionInput) {
+  if (USE_MOCK) return mock.createSubmission(taskId, payload)
   return httpPost<
     CreateSubmissionInput,
     { taskId: string; submissionId: string; eventId?: string }
@@ -116,6 +119,7 @@ export async function createSubmission(taskId: string, payload: CreateSubmission
 }
 
 export async function acceptSubmission(taskId: string, payload: AcceptSubmissionInput) {
+  if (USE_MOCK) return mock.acceptSubmission(taskId, payload)
   return httpPost<
     AcceptSubmissionInput,
     { taskId: string; submissionId: string; eventId?: string }
@@ -123,6 +127,7 @@ export async function acceptSubmission(taskId: string, payload: AcceptSubmission
 }
 
 export async function rejectSubmission(taskId: string, payload: RejectSubmissionInput) {
+  if (USE_MOCK) return mock.rejectSubmission(taskId, payload)
   return httpPost<
     RejectSubmissionInput,
     { taskId: string; submissionId: string; eventId?: string }
