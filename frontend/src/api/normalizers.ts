@@ -90,6 +90,7 @@ function normalizeReviewDecision(decision?: string): Review['decision'] {
 
 function normalizeSettlementStatus(status?: string): Settlement['status'] {
   switch (status) {
+    case 'recorded':
     case 'paid':
       return 'settled'
     case 'failed':

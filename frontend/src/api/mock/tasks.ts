@@ -7,6 +7,7 @@ import type {
   CreateBidInput,
   CreateSubmissionInput,
   CreateTaskInput,
+  RecordSettlementInput,
   RejectSubmissionInput,
 } from '../tasks'
 import type {
@@ -174,7 +175,11 @@ export async function awardTask(
     nodeId: executorAccount.nodeId,
   }
   t.status = 'AWARDED'
-  t.reward = input.agreedReward
+  t.reward = {
+    ...t.reward,
+    amount: input.agreedReward.amount,
+    currency: input.agreedReward.currency,
+  }
   t.updatedAt = new Date().toISOString()
   const taskBids = bids[taskId] ?? []
   for (const b of taskBids) {
@@ -231,4 +236,38 @@ export async function rejectSubmission(
   t.status = 'REJECTED'
   t.updatedAt = new Date().toISOString()
   return delay({ taskId, submissionId: input.submissionId })
+}
+
+export async function recordSettlement(
+  taskId: string,
+  input: RecordSettlementInput,
+): Promise<{ taskId: string; settlementId: string }> {
+  const t = tasks.find((x) => x.taskId === taskId)
+  if (!t) throw new ApiRequestError({ code: 'NOT_FOUND', message: 'task not found' }, 404)
+  if (t.status !== 'ACCEPTED') {
+    throw new ApiRequestError({ code: 'INVALID_STATE', message: 'task is not accepted' }, 409)
+  }
+  const { settlements } = await import('./db')
+  const settlementId = input.settlementId || `stl_${Date.now()}`
+  const payee = t.assignedExecutor
+  if (!payee) {
+    throw new ApiRequestError({ code: 'INVALID_STATE', message: 'missing payee' }, 409)
+  }
+  settlements[taskId] = [
+    ...(settlements[taskId] ?? []),
+    {
+      settlementId,
+      taskId,
+      payee,
+      amount: input.amount || t.reward.amount,
+      currency: input.currency || t.reward.currency,
+      status: 'settled',
+      channel: input.channel || 'manual',
+      externalRef: input.externalRef,
+      recordedAt: input.recordedAt || new Date().toISOString(),
+    },
+  ]
+  t.status = 'SETTLED'
+  t.updatedAt = new Date().toISOString()
+  return delay({ taskId, settlementId })
 }

@@ -86,6 +86,7 @@ func main() {
 		Contracts:   contractRepo,
 		Submissions: submissionRepo,
 		Reviews:     reviewRepo,
+		Settlements: settlementRepo,
 		DomainEvts:  domainEventRepo,
 		SyncPub:     syncPub,
 	})

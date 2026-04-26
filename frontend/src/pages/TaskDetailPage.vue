@@ -148,10 +148,14 @@ const actions = computed<ActionItem[]>(() => {
         list.push({ key: 'reject', label: '驳回', danger: true })
       }
       break
+    case 'ACCEPTED':
+      if (role === 'reviewer' || role === 'requester') {
+        list.push({ key: 'settle', label: '发起结算', primary: true })
+      }
+      break
     case 'SETTLED':
     case 'CANCELLED':
     case 'EXPIRED':
-    case 'ACCEPTED':
     case 'REJECTED':
     case 'DISPUTED':
       break
@@ -248,6 +252,19 @@ async function runAction(key: string) {
           rejectedAt: new Date().toISOString(),
         })
         toast.warning('已驳回交付')
+        break
+      }
+      case 'settle': {
+        if (!currentTask.assignedExecutor) throw new Error('当前任务没有可结算的执行方')
+        if (!window.confirm(`确认向 ${currentTask.assignedExecutor.name} 发起结算？`)) return
+        const externalRef = window.prompt('外部流水号（可选）')?.trim()
+        await tasksApi.recordSettlement(currentTask.taskId, {
+          settlementId: nextId('settlement'),
+          channel: 'manual',
+          externalRef: externalRef || undefined,
+          recordedAt: new Date().toISOString(),
+        })
+        toast.success('已发起结算')
         break
       }
       default:

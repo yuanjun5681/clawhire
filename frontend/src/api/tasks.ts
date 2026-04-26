@@ -94,6 +94,16 @@ export interface RejectSubmissionInput {
   rejectedAt?: string
 }
 
+export interface RecordSettlementInput {
+  settlementId?: string
+  amount?: number
+  currency?: string
+  status?: string
+  channel?: string
+  externalRef?: string
+  recordedAt?: string
+}
+
 export async function createBid(taskId: string, payload: CreateBidInput) {
   if (USE_MOCK) return mock.createBid(taskId, payload)
   return httpPost<CreateBidInput, { taskId: string; bidId: string; eventId?: string }>(
@@ -132,4 +142,12 @@ export async function rejectSubmission(taskId: string, payload: RejectSubmission
     RejectSubmissionInput,
     { taskId: string; submissionId: string; eventId?: string }
   >(`/tasks/${taskId}/reject`, payload)
+}
+
+export async function recordSettlement(taskId: string, payload: RecordSettlementInput) {
+  if (USE_MOCK) return mock.recordSettlement(taskId, payload)
+  return httpPost<
+    RecordSettlementInput,
+    { taskId: string; settlementId: string; eventId?: string }
+  >(`/tasks/${taskId}/settlements`, payload)
 }

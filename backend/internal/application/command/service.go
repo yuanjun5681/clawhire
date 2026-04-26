@@ -10,6 +10,7 @@ import (
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/contract"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/event"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/review"
+	"github.com/yuanjun5681/clawhire/backend/internal/domain/settlement"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/submission"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/task"
 	"github.com/yuanjun5681/clawhire/backend/internal/protocol/clawhire"
@@ -29,6 +30,7 @@ type Service struct {
 	contracts   contract.Repository
 	submissions submission.Repository
 	reviews     review.Repository
+	settlements settlement.Repository
 	domainEvts  event.DomainEventRepository
 	sm          task.StateMachine
 	now         Now
@@ -41,6 +43,7 @@ type Options struct {
 	Contracts   contract.Repository
 	Submissions submission.Repository
 	Reviews     review.Repository
+	Settlements settlement.Repository
 	DomainEvts  event.DomainEventRepository
 	StateMach   task.StateMachine
 	Now         Now
@@ -88,6 +91,11 @@ type RejectSubmissionCommand struct {
 	Event   *EventMeta
 }
 
+type RecordSettlementCommand struct {
+	Payload clawhire.RecordSettlementPayload
+	Event   *EventMeta
+}
+
 func NewService(opt Options) *Service {
 	now := opt.Now
 	if now == nil {
@@ -103,6 +111,7 @@ func NewService(opt Options) *Service {
 		contracts:   opt.Contracts,
 		submissions: opt.Submissions,
 		reviews:     opt.Reviews,
+		settlements: opt.Settlements,
 		domainEvts:  opt.DomainEvts,
 		sm:          sm,
 		now:         now,

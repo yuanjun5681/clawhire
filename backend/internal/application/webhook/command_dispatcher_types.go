@@ -68,6 +68,7 @@ func NewCommandDispatcher(opt CommandDispatcherOptions) *CommandDispatcher {
 			Contracts:   opt.Contracts,
 			Submissions: opt.Submissions,
 			Reviews:     opt.Reviews,
+			Settlements: opt.Settlements,
 			DomainEvts:  opt.DomainEvts,
 			StateMach:   sm,
 			Now:         appcmd.Now(now),

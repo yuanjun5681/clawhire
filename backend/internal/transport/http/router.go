@@ -49,6 +49,7 @@ func RegisterRoutes(e *gin.Engine, d Deps) {
 		authed.POST("/tasks/:taskId/submissions", d.Write.CreateSubmission)
 		authed.POST("/tasks/:taskId/accept", d.Write.AcceptSubmission)
 		authed.POST("/tasks/:taskId/reject", d.Write.RejectSubmission)
+		authed.POST("/tasks/:taskId/settlements", d.Write.RecordSettlement)
 	}
 	if d.Connections != nil {
 		authed.GET("/accounts/me/connections", d.Connections.ListConnections)

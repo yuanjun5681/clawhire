@@ -95,3 +95,16 @@ func validateRejectSubmission(p clawhire.RejectSubmissionPayload) error {
 	}
 	return validateActor(p.RejectedBy, "rejectedBy")
 }
+
+func validateSettlement(p clawhire.RecordSettlementPayload) error {
+	if strings.TrimSpace(p.TaskID) == "" || strings.TrimSpace(p.SettlementID) == "" {
+		return apierr.New(apierr.CodeInvalidMessagePayload, "taskId and settlementId are required")
+	}
+	if p.Amount <= 0 {
+		return apierr.New(apierr.CodeInvalidMessagePayload, "amount must be greater than 0")
+	}
+	if strings.TrimSpace(p.Currency) == "" {
+		return apierr.New(apierr.CodeInvalidMessagePayload, "currency is required")
+	}
+	return validateActor(p.Payee, "payee")
+}

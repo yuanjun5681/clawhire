@@ -9,6 +9,7 @@ import (
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/contract"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/event"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/review"
+	"github.com/yuanjun5681/clawhire/backend/internal/domain/settlement"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/shared"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/submission"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/task"
@@ -234,6 +235,44 @@ func (r *fakeReviewRepo) ListByTask(_ context.Context, taskID string, page, page
 
 func (r *fakeReviewRepo) ListBySubmission(_ context.Context, submissionID string) ([]*review.Review, error) {
 	return nil, nil
+}
+
+type fakeSettlementRepo struct {
+	items map[string]*settlement.Settlement
+}
+
+func newFakeSettlementRepo() *fakeSettlementRepo {
+	return &fakeSettlementRepo{items: map[string]*settlement.Settlement{}}
+}
+
+func (r *fakeSettlementRepo) Insert(_ context.Context, item *settlement.Settlement) error {
+	cp := *item
+	r.items[item.SettlementID] = &cp
+	return nil
+}
+
+func (r *fakeSettlementRepo) FindByID(_ context.Context, settlementID string) (*settlement.Settlement, error) {
+	item, ok := r.items[settlementID]
+	if !ok {
+		return nil, settlement.ErrSettlementNotFound
+	}
+	cp := *item
+	return &cp, nil
+}
+
+func (r *fakeSettlementRepo) ListByTask(_ context.Context, taskID string) ([]*settlement.Settlement, error) {
+	var list []*settlement.Settlement
+	for _, item := range r.items {
+		if item.TaskID == taskID {
+			cp := *item
+			list = append(list, &cp)
+		}
+	}
+	return list, nil
+}
+
+func (r *fakeSettlementRepo) ListByPayee(_ context.Context, payeeID string, page, pageSize int) ([]*settlement.Settlement, int64, error) {
+	return nil, 0, nil
 }
 
 func TestService_PostTaskDefaultsReviewerAndRecordsEvent(t *testing.T) {
@@ -620,5 +659,60 @@ func TestService_RejectSubmissionMarksRejectedAndCreatesReview(t *testing.T) {
 	}
 	if len(reviewRepo.items) != 1 {
 		t.Fatalf("review count = %d, want 1", len(reviewRepo.items))
+	}
+}
+
+func TestService_RecordSettlementDefaultsFromTaskAndContract(t *testing.T) {
+	now := time.Date(2026, 4, 23, 17, 0, 0, 0, time.UTC)
+	taskRepo := newFakeTaskRepo()
+	taskRepo.items["task_001"] = &task.Task{
+		TaskID:            "task_001",
+		Status:            task.StatusAccepted,
+		AssignedExecutor:  &shared.Actor{ID: "agent_001", Kind: shared.ActorKindAgent, Name: "Agent"},
+		CurrentContractID: "contract_001",
+		Reward:            task.Reward{Mode: task.RewardModeFixed, Amount: 300, Currency: "USD"},
+	}
+	contractRepo := newFakeContractRepo()
+	contractRepo.items["contract_001"] = &contract.Contract{
+		ContractID:   "contract_001",
+		TaskID:       "task_001",
+		AgreedReward: shared.Money{Amount: 260, Currency: "USD"},
+		Status:       contract.StatusCompleted,
+	}
+	settlementRepo := newFakeSettlementRepo()
+	svc := NewService(Options{
+		Tasks:       taskRepo,
+		Bids:        newFakeBidRepo(),
+		Contracts:   contractRepo,
+		Submissions: newFakeSubmissionRepo(),
+		Reviews:     newFakeReviewRepo(),
+		Settlements: settlementRepo,
+		Now:         func() time.Time { return now },
+	})
+
+	res, err := svc.RecordSettlement(context.Background(), RecordSettlementCommand{
+		Payload: clawhire.RecordSettlementPayload{
+			TaskID:       "task_001",
+			SettlementID: "settlement_001",
+			Channel:      "manual",
+		},
+		Event: &EventMeta{ID: "evt_settle", Type: "clawhire.settlement.recorded"},
+	})
+	if err != nil {
+		t.Fatalf("RecordSettlement err = %v", err)
+	}
+	if res.EventID != "evt_settle" {
+		t.Fatalf("event id = %q", res.EventID)
+	}
+	gotTask, _ := taskRepo.FindByID(context.Background(), "task_001")
+	if gotTask.Status != task.StatusSettled {
+		t.Fatalf("task status = %s, want %s", gotTask.Status, task.StatusSettled)
+	}
+	gotSettlement, _ := settlementRepo.FindByID(context.Background(), "settlement_001")
+	if gotSettlement.Payee.ID != "agent_001" || gotSettlement.Amount != 260 || gotSettlement.Currency != "USD" {
+		t.Fatalf("unexpected settlement: %+v", gotSettlement)
+	}
+	if gotSettlement.Status != settlement.StatusRecorded {
+		t.Fatalf("settlement status = %s, want %s", gotSettlement.Status, settlement.StatusRecorded)
 	}
 }

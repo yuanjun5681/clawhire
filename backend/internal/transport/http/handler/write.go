@@ -71,6 +71,16 @@ type rejectSubmissionRequest struct {
 	RejectedAt   *time.Time `json:"rejectedAt,omitempty"`
 }
 
+type recordSettlementRequest struct {
+	SettlementID string     `json:"settlementId,omitempty"`
+	Amount       float64    `json:"amount,omitempty"`
+	Currency     string     `json:"currency,omitempty"`
+	Status       string     `json:"status,omitempty"`
+	Channel      string     `json:"channel,omitempty"`
+	ExternalRef  string     `json:"externalRef,omitempty"`
+	RecordedAt   *time.Time `json:"recordedAt,omitempty"`
+}
+
 type awardTaskResponse struct {
 	TaskID     string `json:"taskId"`
 	ContractID string `json:"contractId"`
@@ -80,6 +90,12 @@ type awardTaskResponse struct {
 type submissionResponse struct {
 	TaskID       string `json:"taskId"`
 	SubmissionID string `json:"submissionId"`
+	EventID      string `json:"eventId,omitempty"`
+}
+
+type settlementResponse struct {
+	TaskID       string `json:"taskId"`
+	SettlementID string `json:"settlementId"`
 	EventID      string `json:"eventId,omitempty"`
 }
 
@@ -293,6 +309,47 @@ func (h *Write) RejectSubmission(c *gin.Context) {
 		TaskID:       taskID,
 		SubmissionID: strings.TrimSpace(req.SubmissionID),
 		EventID:      eventID(event),
+	})
+}
+
+func (h *Write) RecordSettlement(c *gin.Context) {
+	var req recordSettlementRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, http.StatusBadRequest, apierr.CodeInvalidRequest, "invalid JSON body")
+		return
+	}
+	if _, err := h.currentHumanActor(c); err != nil {
+		response.FailErr(c, err)
+		return
+	}
+
+	taskID := strings.TrimSpace(c.Param("taskId"))
+	settlementID := strings.TrimSpace(req.SettlementID)
+	if settlementID == "" {
+		settlementID = "settlement_" + uuid.New().String()
+	}
+	event := h.httpEvent(c, "clawhire.settlement.recorded", fmt.Sprintf("%s:%s", taskID, settlementID))
+	res, err := h.commands.RecordSettlement(c.Request.Context(), appcmd.RecordSettlementCommand{
+		Payload: clawhire.RecordSettlementPayload{
+			TaskID:       taskID,
+			SettlementID: settlementID,
+			Amount:       req.Amount,
+			Currency:     req.Currency,
+			Status:       req.Status,
+			Channel:      req.Channel,
+			ExternalRef:  req.ExternalRef,
+			RecordedAt:   req.RecordedAt,
+		},
+		Event: event,
+	})
+	if err != nil {
+		response.FailErr(c, err)
+		return
+	}
+	response.OK(c, settlementResponse{
+		TaskID:       res.TaskID,
+		SettlementID: res.SettlementID,
+		EventID:      res.EventID,
 	})
 }
 

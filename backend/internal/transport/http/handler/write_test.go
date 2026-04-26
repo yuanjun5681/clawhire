@@ -17,6 +17,7 @@ import (
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/contract"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/event"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/review"
+	"github.com/yuanjun5681/clawhire/backend/internal/domain/settlement"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/shared"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/submission"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/task"
@@ -229,6 +230,37 @@ func (r *writeReviewRepo) ListByTask(_ context.Context, taskID string, page, pag
 
 func (r *writeReviewRepo) ListBySubmission(_ context.Context, submissionID string) ([]*review.Review, error) {
 	return nil, nil
+}
+
+type writeSettlementRepo struct {
+	items map[string]*settlement.Settlement
+}
+
+func newWriteSettlementRepo() *writeSettlementRepo {
+	return &writeSettlementRepo{items: map[string]*settlement.Settlement{}}
+}
+
+func (r *writeSettlementRepo) Insert(_ context.Context, item *settlement.Settlement) error {
+	cp := *item
+	r.items[item.SettlementID] = &cp
+	return nil
+}
+
+func (r *writeSettlementRepo) FindByID(_ context.Context, settlementID string) (*settlement.Settlement, error) {
+	item, ok := r.items[settlementID]
+	if !ok {
+		return nil, settlement.ErrSettlementNotFound
+	}
+	cp := *item
+	return &cp, nil
+}
+
+func (r *writeSettlementRepo) ListByTask(_ context.Context, taskID string) ([]*settlement.Settlement, error) {
+	return nil, nil
+}
+
+func (r *writeSettlementRepo) ListByPayee(_ context.Context, payeeID string, page, pageSize int) ([]*settlement.Settlement, int64, error) {
+	return nil, 0, nil
 }
 
 type writeAccountRepo struct{ items map[string]*account.Account }
@@ -630,5 +662,65 @@ func TestWrite_RejectSubmission(t *testing.T) {
 	}
 	if len(reviewRepo.items) != 1 {
 		t.Fatalf("reviews = %+v", reviewRepo.items)
+	}
+}
+
+func TestWrite_RecordSettlement(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	taskRepo := newWriteTaskRepo()
+	taskRepo.items["task_001"] = &task.Task{
+		TaskID:            "task_001",
+		Status:            task.StatusAccepted,
+		AssignedExecutor:  &shared.Actor{ID: "acct_agent_001", Kind: shared.ActorKindAgent, Name: "Agent"},
+		CurrentContractID: "contract_001",
+		Reward:            task.Reward{Mode: task.RewardModeFixed, Amount: 300, Currency: "USD"},
+	}
+	contractRepo := newWriteContractRepo()
+	contractRepo.items["contract_001"] = &contract.Contract{
+		ContractID:   "contract_001",
+		TaskID:       "task_001",
+		AgreedReward: shared.Money{Amount: 260, Currency: "USD"},
+		Status:       contract.StatusCompleted,
+	}
+	settlementRepo := newWriteSettlementRepo()
+	accountRepo := &writeAccountRepo{items: map[string]*account.Account{
+		"acct_human_001": {AccountID: "acct_human_001", Type: account.TypeHuman, Status: account.StatusActive, DisplayName: "Alice"},
+	}}
+	svc := appcmd.NewService(appcmd.Options{
+		Tasks:       taskRepo,
+		Bids:        newWriteBidRepo(),
+		Contracts:   contractRepo,
+		Submissions: newWriteSubmissionRepo(),
+		Reviews:     newWriteReviewRepo(),
+		Settlements: settlementRepo,
+		DomainEvts:  writeEventRepo{},
+	})
+	w := NewWrite(svc, accountRepo)
+	e := gin.New()
+	e.Use(testAuthStub())
+	e.POST("/api/tasks/:taskId/settlements", w.RecordSettlement)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/tasks/task_001/settlements", bytes.NewBufferString(`{"settlementId":"settlement_001","channel":"manual"}`))
+	req.Header.Set(testAccountHeader, "acct_human_001")
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body=%s", rec.Code, rec.Body.String())
+	}
+	gotTask, err := taskRepo.FindByID(context.Background(), "task_001")
+	if err != nil {
+		t.Fatalf("FindByID task err = %v", err)
+	}
+	if gotTask.Status != task.StatusSettled {
+		t.Fatalf("task status = %s", gotTask.Status)
+	}
+	gotSettlement, err := settlementRepo.FindByID(context.Background(), "settlement_001")
+	if err != nil {
+		t.Fatalf("FindByID settlement err = %v", err)
+	}
+	if gotSettlement.Payee.ID != "acct_agent_001" || gotSettlement.Amount != 260 || gotSettlement.Currency != "USD" {
+		t.Fatalf("settlement = %+v", gotSettlement)
 	}
 }

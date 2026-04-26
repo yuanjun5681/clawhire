@@ -35,48 +35,50 @@ function variant(a: ActionItem) {
       aria-hidden="true"
       class="pointer-events-none absolute -right-20 -top-20 h-40 w-40 rounded-full bg-primary/10 blur-3xl"
     />
-    <header v-if="stageLabel || stageHint" class="relative mb-4 space-y-1">
-      <p
-        v-if="stageLabel"
-        class="text-[10.5px] uppercase tracking-[0.12em] text-base-content/55 font-semibold"
-      >
-        {{ stageLabel }}
-      </p>
-      <p v-if="stageHint" class="text-sm text-base-content/75 leading-relaxed">
-        {{ stageHint }}
-      </p>
-    </header>
+    <div class="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <header v-if="stageLabel || stageHint" class="min-w-0 space-y-1">
+        <p
+          v-if="stageLabel"
+          class="text-[10.5px] uppercase tracking-[0.12em] text-base-content/55 font-semibold"
+        >
+          {{ stageLabel }}
+        </p>
+        <p v-if="stageHint" class="text-sm text-base-content/75 leading-relaxed">
+          {{ stageHint }}
+        </p>
+      </header>
 
-    <div v-if="actions.length > 0" class="relative flex flex-wrap gap-2">
-      <UiButton
-        v-for="a in actions"
-        :key="a.key"
-        :variant="variant(a)"
-        size="sm"
-        :disabled="Boolean(a.disabledReason)"
-        :title="a.disabledReason ?? undefined"
-        @click="$emit('run', a.key)"
+      <div v-if="actions.length > 0" class="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+        <UiButton
+          v-for="a in actions"
+          :key="a.key"
+          :variant="variant(a)"
+          size="sm"
+          :disabled="Boolean(a.disabledReason)"
+          :title="a.disabledReason ?? undefined"
+          @click="$emit('run', a.key)"
+        >
+          {{ a.label }}
+        </UiButton>
+      </div>
+      <p
+        v-else-if="props.emptyHint"
+        class="inline-flex items-center gap-1.5 text-xs text-base-content/50"
       >
-        {{ a.label }}
-      </UiButton>
+        <svg
+          class="h-3.5 w-3.5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 8v4M12 16h.01" />
+        </svg>
+        {{ props.emptyHint }}
+      </p>
     </div>
-    <p
-      v-else-if="props.emptyHint"
-      class="relative inline-flex items-center gap-1.5 text-xs text-base-content/50"
-    >
-      <svg
-        class="h-3.5 w-3.5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.8"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <circle cx="12" cy="12" r="10" />
-        <path d="M12 8v4M12 16h.01" />
-      </svg>
-      {{ props.emptyHint }}
-    </p>
   </section>
 </template>

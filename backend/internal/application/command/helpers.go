@@ -72,3 +72,10 @@ func toAPIError(op string, err error) error {
 		return apierr.Wrap(apierr.CodeInternalError, op, err)
 	}
 }
+
+func eventID(meta *EventMeta) string {
+	if meta == nil {
+		return ""
+	}
+	return strings.TrimSpace(meta.ID)
+}
