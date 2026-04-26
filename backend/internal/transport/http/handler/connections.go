@@ -95,7 +95,7 @@ func (h *Connections) CreateConnection(c *gin.Context) {
 		response.Fail(c, http.StatusInternalServerError, apierr.CodeInternalError, "create connection failed")
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"ok": true, "data": conn})
+	response.Created(c, conn)
 }
 
 // DeleteConnection DELETE /api/accounts/me/connections/:platform?platformNodeId=xxx

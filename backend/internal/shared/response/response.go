@@ -34,6 +34,10 @@ func OK(c *gin.Context, data any) {
 	c.JSON(http.StatusOK, Success{Success: true, Data: data})
 }
 
+func Created(c *gin.Context, data any) {
+	c.JSON(http.StatusCreated, Success{Success: true, Data: data})
+}
+
 func OKMeta(c *gin.Context, data any, meta *Meta) {
 	c.JSON(http.StatusOK, Success{Success: true, Data: data, Meta: meta})
 }
