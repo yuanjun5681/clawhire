@@ -70,15 +70,12 @@ type StartTaskPayload struct {
 }
 
 type ReportProgressPayload struct {
-	TaskID     string            `json:"taskId"`
-	ProgressID string            `json:"progressId"`
-	ContractID string            `json:"contractId,omitempty"`
-	Executor   shared.Actor      `json:"executor"`
-	Stage      string            `json:"stage,omitempty"`
-	Percent    *float64          `json:"percent,omitempty"`
-	Summary    string            `json:"summary"`
-	Artifacts  []shared.Artifact `json:"artifacts,omitempty"`
-	ReportedAt *time.Time        `json:"reportedAt,omitempty"`
+	TaskID     string     `json:"taskId"`
+	ContractID string     `json:"contractId,omitempty"`
+	Stage      string     `json:"stage,omitempty"`
+	Percent    *float64   `json:"percent,omitempty"`
+	Summary    string     `json:"summary"`
+	ReportedAt *time.Time `json:"reportedAt,omitempty"`
 }
 
 type CompleteMilestonePayload struct {
@@ -95,11 +92,10 @@ type CompleteMilestonePayload struct {
 
 type CreateSubmissionPayload struct {
 	TaskID       string            `json:"taskId"`
-	SubmissionID string            `json:"submissionId"`
+	SubmissionID string            `json:"submissionId,omitempty"`
 	ContractID   string            `json:"contractId,omitempty"`
-	Executor     shared.Actor      `json:"executor"`
-	Artifacts    []shared.Artifact `json:"artifacts,omitempty"`
 	Summary      string            `json:"summary"`
+	Artifacts    []shared.Artifact `json:"artifacts,omitempty"`
 	Evidence     *Evidence         `json:"evidence,omitempty"`
 }
 

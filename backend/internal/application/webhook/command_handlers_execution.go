@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 
+	"github.com/google/uuid"
+
 	appcmd "github.com/yuanjun5681/clawhire/backend/internal/application/command"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/milestone"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/progress"
@@ -45,14 +47,12 @@ func (d *CommandDispatcher) handleProgressReported(ctx context.Context, env *cla
 	}
 	reportedAt := chooseTime(payload.ReportedAt, d.now)
 	item := &progress.Report{
-		ProgressID: payload.ProgressID,
+		ProgressID: uuid.New().String(),
 		TaskID:     payload.TaskID,
 		ContractID: firstNonEmpty(payload.ContractID, t.CurrentContractID),
-		Executor:   payload.Executor,
 		Stage:      strings.TrimSpace(payload.Stage),
 		Percent:    payload.Percent,
 		Summary:    strings.TrimSpace(payload.Summary),
-		Artifacts:  payload.Artifacts,
 		ReportedAt: reportedAt,
 	}
 	if err := d.progress.Insert(ctx, item); err != nil {

@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+
 	appcmd "github.com/yuanjun5681/clawhire/backend/internal/application/command"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/account"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/shared"
@@ -205,23 +207,16 @@ func (h *Write) CreateSubmission(c *gin.Context) {
 		response.Fail(c, http.StatusBadRequest, apierr.CodeInvalidRequest, "invalid JSON body")
 		return
 	}
-	actor, err := h.currentHumanActor(c)
-	if err != nil {
-		response.FailErr(c, err)
-		return
-	}
 
 	taskID := strings.TrimSpace(c.Param("taskId"))
-	event := h.httpEvent(c, "clawhire.submission.created", fmt.Sprintf("%s:%s", taskID, req.SubmissionID))
+	event := h.httpEvent(c, "clawhire.submission.created", fmt.Sprintf("%s:%s", taskID, uuid.New().String()))
 	if err := h.commands.CreateSubmission(c.Request.Context(), appcmd.CreateSubmissionCommand{
 		Payload: clawhire.CreateSubmissionPayload{
-			TaskID:       taskID,
-			SubmissionID: strings.TrimSpace(req.SubmissionID),
-			ContractID:   strings.TrimSpace(req.ContractID),
-			Executor:     actor,
-			Artifacts:    req.Artifacts,
-			Summary:      req.Summary,
-			Evidence:     req.Evidence,
+			TaskID:     taskID,
+			ContractID: strings.TrimSpace(req.ContractID),
+			Artifacts:  req.Artifacts,
+			Summary:    req.Summary,
+			Evidence:   req.Evidence,
 		},
 		Event: event,
 	}); err != nil {
@@ -229,9 +224,8 @@ func (h *Write) CreateSubmission(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, response.Success{Success: true, Data: submissionResponse{
-		TaskID:       taskID,
-		SubmissionID: strings.TrimSpace(req.SubmissionID),
-		EventID:      eventID(event),
+		TaskID:  taskID,
+		EventID: eventID(event),
 	}})
 }
 

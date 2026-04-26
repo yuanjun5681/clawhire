@@ -489,11 +489,9 @@ func TestService_CreateSubmissionTransitionsTask(t *testing.T) {
 
 	err := svc.CreateSubmission(context.Background(), CreateSubmissionCommand{
 		Payload: clawhire.CreateSubmissionPayload{
-			TaskID:       "task_001",
-			SubmissionID: "submission_001",
-			Executor:     shared.Actor{ID: "agent_007", Kind: shared.ActorKindAgent},
-			Summary:      "Landing page delivered",
-			Artifacts:    []shared.Artifact{{Type: "url", Value: "https://example.com/result"}},
+			TaskID:    "task_001",
+			Summary:   "Landing page delivered",
+			Artifacts: []shared.Artifact{{Type: "url", Value: "https://example.com/result"}},
 		},
 	})
 	if err != nil {
@@ -503,9 +501,16 @@ func TestService_CreateSubmissionTransitionsTask(t *testing.T) {
 	if gotTask.Status != task.StatusSubmitted {
 		t.Fatalf("task status = %s, want %s", gotTask.Status, task.StatusSubmitted)
 	}
-	gotSub, _ := subRepo.FindByID(context.Background(), "submission_001")
-	if gotSub.Status != submission.StatusSubmitted {
-		t.Fatalf("submission status = %s, want %s", gotSub.Status, submission.StatusSubmitted)
+	if len(subRepo.items) != 1 {
+		t.Fatalf("expected 1 submission, got %d", len(subRepo.items))
+	}
+	var gotSub *submission.Submission
+	for _, s := range subRepo.items {
+		gotSub = s
+		break
+	}
+	if gotSub == nil || gotSub.Status != submission.StatusSubmitted {
+		t.Fatalf("submission status = %v, want %s", gotSub, submission.StatusSubmitted)
 	}
 }
 

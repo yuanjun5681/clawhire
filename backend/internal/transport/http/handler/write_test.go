@@ -476,12 +476,16 @@ func TestWrite_CreateSubmission(t *testing.T) {
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
-	got, err := submissionRepo.FindByID(context.Background(), "submission_001")
-	if err != nil {
-		t.Fatalf("FindByID err = %v", err)
+	if len(submissionRepo.items) != 1 {
+		t.Fatalf("expected 1 submission, got %d", len(submissionRepo.items))
 	}
-	if got.Executor.ID != "acct_human_002" || got.Status != submission.StatusSubmitted {
-		t.Fatalf("submission = %+v", got)
+	var got *submission.Submission
+	for _, s := range submissionRepo.items {
+		got = s
+		break
+	}
+	if got.Status != submission.StatusSubmitted {
+		t.Fatalf("submission status = %s, want %s", got.Status, submission.StatusSubmitted)
 	}
 }
 

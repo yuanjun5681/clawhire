@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/contract"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/review"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/submission"
@@ -25,11 +27,14 @@ func (s *Service) CreateSubmission(ctx context.Context, cmd CreateSubmissionComm
 		return apierr.Wrap(apierr.CodeInvalidState, "create submission not allowed", err)
 	}
 	submittedAt := s.now().UTC()
+	submissionID := strings.TrimSpace(payload.SubmissionID)
+	if submissionID == "" {
+		submissionID = uuid.New().String()
+	}
 	item := &submission.Submission{
-		SubmissionID: payload.SubmissionID,
+		SubmissionID: submissionID,
 		TaskID:       payload.TaskID,
 		ContractID:   firstNonEmpty(payload.ContractID, t.CurrentContractID),
-		Executor:     payload.Executor,
 		Summary:      strings.TrimSpace(payload.Summary),
 		Artifacts:    payload.Artifacts,
 		Evidence:     normalizeEvidence(payload.Evidence),

@@ -467,11 +467,7 @@ func TestCommandDispatcher_MinimalLifecycle(t *testing.T) {
 			data: map[string]interface{}{
 				"taskId":       "task_001",
 				"submissionId": "submission_001",
-				"executor": map[string]interface{}{
-					"id":   "agent_007",
-					"kind": "agent",
-				},
-				"summary": "Landing page delivered",
+				"summary":      "Landing page delivered",
 				"artifacts": []map[string]interface{}{
 					{
 						"type":  "url",

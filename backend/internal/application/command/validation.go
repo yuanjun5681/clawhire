@@ -70,16 +70,13 @@ func validateAwardTask(p clawhire.AwardTaskPayload) error {
 }
 
 func validateSubmission(p clawhire.CreateSubmissionPayload) error {
-	if strings.TrimSpace(p.TaskID) == "" || strings.TrimSpace(p.SubmissionID) == "" {
-		return apierr.New(apierr.CodeInvalidMessagePayload, "taskId and submissionId are required")
+	if strings.TrimSpace(p.TaskID) == "" {
+		return apierr.New(apierr.CodeInvalidMessagePayload, "taskId is required")
 	}
 	if strings.TrimSpace(p.Summary) == "" {
 		return apierr.New(apierr.CodeInvalidMessagePayload, "summary is required")
 	}
-	if len(p.Artifacts) == 0 {
-		return apierr.New(apierr.CodeInvalidMessagePayload, "artifacts are required")
-	}
-	return validateActor(p.Executor, "executor")
+	return nil
 }
 
 func validateAcceptSubmission(p clawhire.AcceptSubmissionPayload) error {

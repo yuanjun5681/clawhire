@@ -77,13 +77,13 @@ func validateTaskStart(p clawhire.StartTaskPayload) error {
 }
 
 func validateProgress(p clawhire.ReportProgressPayload) error {
-	if strings.TrimSpace(p.TaskID) == "" || strings.TrimSpace(p.ProgressID) == "" {
-		return apierr.New(apierr.CodeInvalidMessagePayload, "taskId and progressId are required")
+	if strings.TrimSpace(p.TaskID) == "" {
+		return apierr.New(apierr.CodeInvalidMessagePayload, "taskId is required")
 	}
 	if strings.TrimSpace(p.Summary) == "" {
 		return apierr.New(apierr.CodeInvalidMessagePayload, "summary is required")
 	}
-	return validateActor(p.Executor, "executor")
+	return nil
 }
 
 func validateMilestone(p clawhire.CompleteMilestonePayload) error {
@@ -94,16 +94,13 @@ func validateMilestone(p clawhire.CompleteMilestonePayload) error {
 }
 
 func validateSubmission(p clawhire.CreateSubmissionPayload) error {
-	if strings.TrimSpace(p.TaskID) == "" || strings.TrimSpace(p.SubmissionID) == "" {
-		return apierr.New(apierr.CodeInvalidMessagePayload, "taskId and submissionId are required")
+	if strings.TrimSpace(p.TaskID) == "" {
+		return apierr.New(apierr.CodeInvalidMessagePayload, "taskId is required")
 	}
 	if strings.TrimSpace(p.Summary) == "" {
 		return apierr.New(apierr.CodeInvalidMessagePayload, "summary is required")
 	}
-	if len(p.Artifacts) == 0 {
-		return apierr.New(apierr.CodeInvalidMessagePayload, "artifacts are required")
-	}
-	return validateActor(p.Executor, "executor")
+	return nil
 }
 
 func validateAcceptSubmission(p clawhire.AcceptSubmissionPayload) error {
