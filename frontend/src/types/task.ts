@@ -48,6 +48,7 @@ export interface TaskDetail extends TaskListItem {
   description: string
   reviewer?: AccountSummary
   assignedExecutor?: AccountSummary
+  assignedAt?: string
   acceptanceSpec: AcceptanceSpec
   createdAt: string
   updatedAt: string

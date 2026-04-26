@@ -145,6 +145,7 @@ func main() {
 			reviewRepo,
 			settlementRepo,
 			accountRepo,
+			domainEventRepo,
 		),
 	})
 

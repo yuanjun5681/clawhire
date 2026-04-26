@@ -180,7 +180,9 @@ export async function awardTask(
     amount: input.agreedReward.amount,
     currency: input.agreedReward.currency,
   }
-  t.updatedAt = new Date().toISOString()
+  const now = new Date().toISOString()
+  t.assignedAt = now
+  t.updatedAt = now
   const taskBids = bids[taskId] ?? []
   for (const b of taskBids) {
     b.status = b.executor.id === input.executorId ? 'accepted' : 'rejected'

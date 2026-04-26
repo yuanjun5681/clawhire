@@ -12,6 +12,7 @@ import (
 
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/account"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/bid"
+	"github.com/yuanjun5681/clawhire/backend/internal/domain/event"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/milestone"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/progress"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/review"
@@ -79,6 +80,25 @@ func (r *queryTaskRepo) ListByExecutor(_ context.Context, executorID string, sta
 		}
 	}
 	return list, int64(len(list)), nil
+}
+
+type queryDomainEventRepo struct {
+	items []*event.DomainEvent
+	err   error
+}
+
+func (r queryDomainEventRepo) Insert(context.Context, *event.DomainEvent) error { return nil }
+func (r queryDomainEventRepo) ListByAggregate(_ context.Context, aggType, aggID string, _, _ int) ([]*event.DomainEvent, int64, error) {
+	if r.err != nil {
+		return nil, 0, r.err
+	}
+	var out []*event.DomainEvent
+	for _, item := range r.items {
+		if item.AggregateType == aggType && item.AggregateID == aggID {
+			out = append(out, item)
+		}
+	}
+	return out, int64(len(out)), nil
 }
 
 type queryAccountRepo struct {
@@ -257,6 +277,73 @@ func TestQuery_GetTask_NotFound(t *testing.T) {
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", rec.Code)
+	}
+}
+
+func TestQuery_GetTask_AssignedAtFromDomainEvent(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	createdAt := time.Date(2026, 4, 23, 10, 0, 0, 0, time.UTC)
+	updatedAt := time.Date(2026, 4, 24, 12, 0, 0, 0, time.UTC)
+	awardedAt := time.Date(2026, 4, 23, 11, 0, 0, 0, time.UTC)
+	taskRepo := &queryTaskRepo{items: map[string]*task.Task{
+		"task_001": {
+			TaskID:    "task_001",
+			Title:     "Build landing page",
+			Category:  "coding",
+			Status:    task.StatusSubmitted,
+			Requester: shared.Actor{ID: "user_001", Kind: shared.ActorKindUser},
+			Reward:    task.Reward{Mode: task.RewardModeFixed, Amount: 300, Currency: "USD"},
+			CreatedAt: createdAt,
+			UpdatedAt: updatedAt,
+			AssignedExecutor: &shared.Actor{
+				ID:   "agent_007",
+				Kind: shared.ActorKindAgent,
+			},
+		},
+	}}
+	e := gin.New()
+	q := NewQuery(
+		taskRepo,
+		emptyBidRepo{},
+		emptyProgressRepo{},
+		emptyMilestoneRepo{},
+		emptySubmissionRepo{},
+		reviewRepoStub{},
+		settlementRepoStub{},
+		&queryAccountRepo{},
+		queryDomainEventRepo{items: []*event.DomainEvent{{
+			EventID:       "evt_award",
+			AggregateType: "task",
+			AggregateID:   "task_001",
+			EventType:     "clawhire.task.awarded",
+			CreatedAt:     awardedAt,
+		}}},
+	)
+	e.GET("/api/tasks/:taskId", q.GetTask)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/tasks/task_001", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200, body=%s", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		Success bool `json:"success"`
+		Data    struct {
+			TaskID     string     `json:"taskId"`
+			UpdatedAt  time.Time  `json:"updatedAt"`
+			AssignedAt *time.Time `json:"assignedAt"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode body: %v", err)
+	}
+	if !body.Success || body.Data.TaskID != "task_001" || body.Data.AssignedAt == nil || !body.Data.AssignedAt.Equal(awardedAt) {
+		t.Fatalf("unexpected body: %s", rec.Body.String())
+	}
+	if !body.Data.UpdatedAt.Equal(updatedAt) {
+		t.Fatalf("updatedAt = %v, want %v", body.Data.UpdatedAt, updatedAt)
 	}
 }
 

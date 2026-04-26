@@ -344,13 +344,13 @@ const timelineEvents = computed<TimelineEvent[]>(() => {
     })
   }
 
-  if (t.assignedExecutor) {
+  if (t.assignedExecutor && t.assignedAt) {
     evs.push({
       id: `assign-${t.taskId}`,
       type: 'assign',
       title: `指派执行方 · ${t.assignedExecutor.name}`,
       actor: t.requester,
-      at: t.updatedAt,
+      at: t.assignedAt,
     })
   }
 

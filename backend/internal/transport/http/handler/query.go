@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"strconv"
 	"strings"
@@ -10,12 +11,14 @@ import (
 
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/account"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/bid"
+	"github.com/yuanjun5681/clawhire/backend/internal/domain/event"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/milestone"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/progress"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/review"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/settlement"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/submission"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/task"
+	"github.com/yuanjun5681/clawhire/backend/internal/protocol/clawhire"
 	"github.com/yuanjun5681/clawhire/backend/internal/shared/apierr"
 	"github.com/yuanjun5681/clawhire/backend/internal/shared/response"
 )
@@ -29,6 +32,7 @@ type Query struct {
 	reviews     review.Repository
 	settlements settlement.Repository
 	accounts    account.Repository
+	domainEvts  event.DomainEventRepository
 }
 
 func NewQuery(
@@ -40,7 +44,12 @@ func NewQuery(
 	reviews review.Repository,
 	settlements settlement.Repository,
 	accounts account.Repository,
+	domainEvts ...event.DomainEventRepository,
 ) *Query {
+	var domainEventRepo event.DomainEventRepository
+	if len(domainEvts) > 0 {
+		domainEventRepo = domainEvts[0]
+	}
 	return &Query{
 		tasks:       tasks,
 		bids:        bids,
@@ -50,6 +59,7 @@ func NewQuery(
 		reviews:     reviews,
 		settlements: settlements,
 		accounts:    accounts,
+		domainEvts:  domainEventRepo,
 	}
 }
 
@@ -73,6 +83,11 @@ type executorHistoryItem struct {
 	Reward     task.Reward `json:"reward"`
 	AcceptedAt *time.Time  `json:"acceptedAt,omitempty"`
 	SettledAt  *time.Time  `json:"settledAt,omitempty"`
+}
+
+type taskDetail struct {
+	*task.Task
+	AssignedAt *time.Time `json:"assignedAt,omitempty"`
 }
 
 func (h *Query) ListTasks(c *gin.Context) {
@@ -103,12 +118,35 @@ func (h *Query) ListTasks(c *gin.Context) {
 }
 
 func (h *Query) GetTask(c *gin.Context) {
-	item, err := h.tasks.FindByID(c.Request.Context(), c.Param("taskId"))
+	taskID := c.Param("taskId")
+	item, err := h.tasks.FindByID(c.Request.Context(), taskID)
 	if err != nil {
 		response.FailErr(c, repoToHTTPError("get task", err))
 		return
 	}
-	response.OK(c, item)
+	assignedAt, err := h.assignedAt(c.Request.Context(), taskID)
+	if err != nil {
+		response.FailErr(c, apierr.Wrap(apierr.CodeInternalError, "get task assigned event", err))
+		return
+	}
+	response.OK(c, taskDetail{Task: item, AssignedAt: assignedAt})
+}
+
+func (h *Query) assignedAt(ctx context.Context, taskID string) (*time.Time, error) {
+	if h.domainEvts == nil {
+		return nil, nil
+	}
+	events, _, err := h.domainEvts.ListByAggregate(ctx, "task", taskID, 1, 200)
+	if err != nil {
+		return nil, err
+	}
+	for _, item := range events {
+		if item.EventType == clawhire.TypeTaskAwarded {
+			at := item.CreatedAt
+			return &at, nil
+		}
+	}
+	return nil, nil
 }
 
 func (h *Query) ListTaskBids(c *gin.Context) {
