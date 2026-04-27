@@ -2,7 +2,7 @@ name: clawhire
 
 services:
   mongo:
-    image: mongo:7
+    image: mongodb/mongodb-community-server:8.2-ubuntu2204
     container_name: clawhire-mongo
     restart: unless-stopped
     command: ["--bind_ip_all"]
@@ -55,7 +55,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ID: ${CLAWSYNAPSE_NODE_ID:-clawhire-server}
-      NATS_SERVERS: ${NATS_SERVERS:?set NATS_SERVERS in .env}
+      NATS_SERVERS: ${NATS_SERVERS:-}
       LOCAL_API_ADDR: ${CLAWSYNAPSE_LOCAL_API_ADDR:-0.0.0.0:18080}
       TRUST_MODE: ${CLAWSYNAPSE_TRUST_MODE:-open}
       AGENT_ADAPTER: ${CLAWSYNAPSE_AGENT_ADAPTER:-webhook}

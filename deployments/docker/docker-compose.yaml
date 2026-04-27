@@ -1,6 +1,6 @@
 services:
   mongo:
-    image: mongo:7
+    image: mongodb/mongodb-community-server:8.2-ubuntu2204
     container_name: clawhire-mongo
     restart: unless-stopped
     ports:

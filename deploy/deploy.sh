@@ -86,7 +86,12 @@ docker save \
   | gzip > "/tmp/${IMAGES_FILE}"
 
 echo "==> 传输镜像到 ${REMOTE_HOST}:${REMOTE_DIR}/"
-rsync -avz --progress --partial "/tmp/${IMAGES_FILE}" "${REMOTE_HOST}:${REMOTE_DIR}/${IMAGES_FILE}"
+if ssh "${REMOTE_HOST}" "command -v rsync >/dev/null 2>&1"; then
+  rsync -avz --progress --partial "/tmp/${IMAGES_FILE}" "${REMOTE_HOST}:${REMOTE_DIR}/${IMAGES_FILE}"
+else
+  echo "(远程无 rsync, 回退到 scp)"
+  scp "/tmp/${IMAGES_FILE}" "${REMOTE_HOST}:${REMOTE_DIR}/${IMAGES_FILE}"
+fi
 
 echo "==> 更新远程 compose 文件"
 scp "${PROJECT_ROOT}/docker-compose.prod.yml" "${REMOTE_HOST}:${REMOTE_DIR}/docker-compose.yml"
