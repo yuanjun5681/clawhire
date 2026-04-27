@@ -117,7 +117,10 @@ func (s *Service) Register(ctx context.Context, in RegisterHumanInput) (*AuthRes
 // Login 按 accountId + 密码 发放会话 token。
 func (s *Service) Login(ctx context.Context, accountID, password string) (*AuthResult, error) {
 	accountID = strings.TrimSpace(accountID)
-	if accountID == "" || password == "" {
+	if !strings.HasPrefix(accountID, humanAccountPrefix) {
+		accountID = humanAccountPrefix + accountID
+	}
+	if accountID == humanAccountPrefix || password == "" {
 		return nil, apierr.New(apierr.CodeUnauthorized, "invalid credentials")
 	}
 	acc, err := s.accounts.FindByID(ctx, accountID)

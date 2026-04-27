@@ -107,7 +107,7 @@ async function submit() {
               <UiInput
                 v-model="accountId"
                 label="账号 ID"
-                placeholder="acct_human_xxx"
+                placeholder="your-id"
                 autocomplete="username"
                 prefix-icon
                 required
