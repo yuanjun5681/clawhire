@@ -1,0 +1,100 @@
+name: clawhire
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: clawhire-mongo
+    restart: unless-stopped
+    command: ["--bind_ip_all"]
+    volumes:
+      - clawhire-mongo-data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGODB_DATABASE:-clawhire}
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.adminCommand({ ping: 1 }).ok' || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 10s
+
+  backend:
+    image: clawhire/backend:${TAG:-latest}
+    container_name: clawhire-backend
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+      clawsynapse:
+        condition: service_healthy
+    environment:
+      APP_ENV: ${APP_ENV:-prod}
+      HTTP_PORT: ${HTTP_PORT:-8080}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017}
+      MONGODB_DATABASE: ${MONGODB_DATABASE:-clawhire}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      JWT_TTL: ${JWT_TTL:-72h}
+      JWT_ISSUER: ${JWT_ISSUER:-clawhire}
+      BCRYPT_COST: ${BCRYPT_COST:-12}
+      MIN_PASSWORD_LEN: ${MIN_PASSWORD_LEN:-8}
+      CLAWSYNAPSE_NODE_API_URL: ${CLAWSYNAPSE_NODE_API_URL:-http://clawsynapse:18080}
+      TRUSTMESH_PLATFORM_NODE_ID: ${TRUSTMESH_PLATFORM_NODE_ID:-trustmesh-server}
+      TRUSTMESH_WEB_URL: ${TRUSTMESH_WEB_URL:-}
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/readyz >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 10s
+
+  clawsynapse:
+    image: clawhire/clawsynapse:${TAG:-latest}
+    container_name: clawhire-clawsynapse
+    restart: unless-stopped
+    environment:
+      NODE_ID: ${CLAWSYNAPSE_NODE_ID:-clawhire-server}
+      NATS_SERVERS: ${NATS_SERVERS:?set NATS_SERVERS in .env}
+      LOCAL_API_ADDR: ${CLAWSYNAPSE_LOCAL_API_ADDR:-0.0.0.0:18080}
+      TRUST_MODE: ${CLAWSYNAPSE_TRUST_MODE:-open}
+      AGENT_ADAPTER: ${CLAWSYNAPSE_AGENT_ADAPTER:-webhook}
+      WEBHOOK_URL: ${CLAWSYNAPSE_WEBHOOK_URL:-http://backend:8080/webhooks/clawsynapse}
+      DATA_DIR: ${CLAWSYNAPSE_DATA_DIR:-/var/lib/clawsynapse}
+      IDENTITY_KEY_PATH: ${CLAWSYNAPSE_IDENTITY_KEY_PATH:-/var/lib/clawsynapse/identity.key}
+      IDENTITY_PUB_PATH: ${CLAWSYNAPSE_IDENTITY_PUB_PATH:-/var/lib/clawsynapse/identity.pub}
+      DELIVERABLE_PREFIXES: ${DELIVERABLE_PREFIXES:-chat,task,todo,conversation,clawhire}
+      TRANSFER_DIR: ${TRANSFER_DIR:-/var/lib/clawhire-transfers}
+      TRANSFER_TTL: ${TRANSFER_TTL:-24h}
+      LOG_LEVEL: ${CLAWSYNAPSE_LOG_LEVEL:-info}
+      LOG_FORMAT: ${CLAWSYNAPSE_LOG_FORMAT:-json}
+    volumes:
+      - clawhire-clawsynapse-data:/var/lib/clawsynapse
+      - clawhire-transfer-data:/var/lib/clawhire-transfers
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:18080/v1/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 10s
+
+  frontend:
+    image: clawhire/frontend:${TAG:-latest}
+    container_name: clawhire-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 5s
+
+volumes:
+  clawhire-mongo-data:
+  clawhire-clawsynapse-data:
+  clawhire-transfer-data:
