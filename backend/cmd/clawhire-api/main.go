@@ -70,12 +70,14 @@ func main() {
 
 	// --- ClawSynapse 跨平台同步装配（NodeAPIURL 为空时禁用）---
 	var syncPub *platform.SyncPublisher
+	var synapseClient *clawsynapse.Client
 	if cfg.ClawSynapse.NodeAPIURL != "" {
-		synapseClient := clawsynapse.NewClient(cfg.ClawSynapse.NodeAPIURL)
+		synapseClient = clawsynapse.NewClient(cfg.ClawSynapse.NodeAPIURL)
 		syncPub = platform.NewSyncPublisher(platformConnRepo, synapseClient, log)
 		log.WithFields(map[string]interface{}{
 			"nodeAPIURL":             cfg.ClawSynapse.NodeAPIURL,
 			"defaultTrustMeshNodeID": cfg.ClawSynapse.DefaultTrustMeshNodeID,
+			"trustMeshWebURL":        cfg.ClawSynapse.TrustMeshWebURL,
 		}).Info("clawsynapse sync publisher enabled")
 	}
 
@@ -100,6 +102,7 @@ func main() {
 		Reviews:     reviewRepo,
 		Settlements: settlementRepo,
 		Accounts:    accountRepo,
+		Connections: platformConnRepo,
 		DomainEvts:  domainEventRepo,
 		Commands:    commandSvc,
 	})
@@ -127,6 +130,10 @@ func main() {
 	if cfg.ClawSynapse.DefaultTrustMeshNodeID != "" {
 		defaultNodes["trustmesh"] = cfg.ClawSynapse.DefaultTrustMeshNodeID
 	}
+	connectionOpts := []handler.ConnectionOption{}
+	if cfg.ClawSynapse.TrustMeshWebURL != "" && synapseClient != nil {
+		connectionOpts = append(connectionOpts, handler.WithTrustMeshConnect(cfg.ClawSynapse.TrustMeshWebURL, synapseClient))
+	}
 
 	httpserver.RegisterRoutes(srv.Engine(), httpserver.Deps{
 		Log:             log,
@@ -134,7 +141,7 @@ func main() {
 		ClawSynapseHook: handler.NewClawSynapseWebhook(webhookSvc, log),
 		Write:           handler.NewWrite(commandSvc, accountRepo),
 		Auth:            handler.NewAuth(authSvc),
-		Connections:     handler.NewConnections(platformConnRepo, defaultNodes),
+		Connections:     handler.NewConnections(platformConnRepo, defaultNodes, connectionOpts...),
 		JWTIssuer:       jwtIssuer,
 		Query: handler.NewQuery(
 			taskRepo,

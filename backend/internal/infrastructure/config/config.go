@@ -14,8 +14,8 @@ type Config struct {
 	HTTPPort int    `env:"HTTP_PORT" envDefault:"8080"`
 	LogLevel string `env:"LOG_LEVEL" envDefault:"info"`
 
-	Mongo      MongoConfig
-	Auth       AuthConfig
+	Mongo       MongoConfig
+	Auth        AuthConfig
 	ClawSynapse ClawSynapseConfig
 }
 
@@ -38,6 +38,7 @@ type AuthConfig struct {
 type ClawSynapseConfig struct {
 	NodeAPIURL             string `env:"CLAWSYNAPSE_NODE_API_URL"`
 	DefaultTrustMeshNodeID string `env:"TRUSTMESH_PLATFORM_NODE_ID"`
+	TrustMeshWebURL        string `env:"TRUSTMESH_WEB_URL"`
 }
 
 func Load() (*Config, error) {

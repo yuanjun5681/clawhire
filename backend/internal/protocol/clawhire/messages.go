@@ -141,6 +141,18 @@ type DisputeTaskPayload struct {
 	DisputedAt *time.Time    `json:"disputedAt,omitempty"`
 }
 
+type ConnectionEstablishedPayload struct {
+	TrustMeshNodeID string     `json:"trustMeshNodeId"`
+	RemoteUserID    string     `json:"remoteUserId"`
+	LinkedAt        *time.Time `json:"linkedAt,omitempty"`
+}
+
+type ConnectionRemovedPayload struct {
+	TrustMeshNodeID string     `json:"trustMeshNodeId"`
+	RemoteUserID    string     `json:"remoteUserId"`
+	RemovedAt       *time.Time `json:"removedAt,omitempty"`
+}
+
 func NormalizeAcceptanceMode(mode string) string {
 	mode = strings.TrimSpace(strings.ToLower(mode))
 	if mode == "" {

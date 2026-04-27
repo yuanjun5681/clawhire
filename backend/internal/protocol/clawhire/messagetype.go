@@ -16,18 +16,20 @@ func IsClawHireType(t string) bool {
 
 // 已知消息类型常量。
 const (
-	TypeTaskPosted          = "clawhire.task.posted"
-	TypeBidPlaced           = "clawhire.bid.placed"
-	TypeTaskAwarded         = "clawhire.task.awarded"
-	TypeTaskStarted         = "clawhire.task.started"
-	TypeProgressReported    = "clawhire.progress.reported"
-	TypeMilestoneCompleted  = "clawhire.milestone.completed"
-	TypeSubmissionCreated   = "clawhire.submission.created"
-	TypeSubmissionAccepted  = "clawhire.submission.accepted"
-	TypeSubmissionRejected  = "clawhire.submission.rejected"
-	TypeSettlementRecorded  = "clawhire.settlement.recorded"
-	TypeTaskCancelled       = "clawhire.task.cancelled"
-	TypeTaskDisputed        = "clawhire.task.disputed"
+	TypeTaskPosted            = "clawhire.task.posted"
+	TypeBidPlaced             = "clawhire.bid.placed"
+	TypeTaskAwarded           = "clawhire.task.awarded"
+	TypeTaskStarted           = "clawhire.task.started"
+	TypeProgressReported      = "clawhire.progress.reported"
+	TypeMilestoneCompleted    = "clawhire.milestone.completed"
+	TypeSubmissionCreated     = "clawhire.submission.created"
+	TypeSubmissionAccepted    = "clawhire.submission.accepted"
+	TypeSubmissionRejected    = "clawhire.submission.rejected"
+	TypeSettlementRecorded    = "clawhire.settlement.recorded"
+	TypeTaskCancelled         = "clawhire.task.cancelled"
+	TypeTaskDisputed          = "clawhire.task.disputed"
+	TypeConnectionEstablished = "clawhire.connection.established"
+	TypeConnectionRemoved     = "clawhire.connection.removed"
 )
 
 // KnownTypes 枚举当前 MVP 支持的所有消息类型。
@@ -45,6 +47,8 @@ func KnownTypes() []string {
 		TypeSettlementRecorded,
 		TypeTaskCancelled,
 		TypeTaskDisputed,
+		TypeConnectionEstablished,
+		TypeConnectionRemoved,
 	}
 }
 

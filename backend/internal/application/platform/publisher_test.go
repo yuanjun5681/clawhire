@@ -26,6 +26,11 @@ func (r *fakeConnRepo) Insert(_ context.Context, conn *account.PlatformConnectio
 	return nil
 }
 
+func (r *fakeConnRepo) UpsertByLocalUserAndNode(_ context.Context, conn *account.PlatformConnection) error {
+	r.byLocal[conn.LocalUserID] = append(r.byLocal[conn.LocalUserID], conn)
+	return nil
+}
+
 func (r *fakeConnRepo) FindByLocalUser(_ context.Context, localUserID, platform string) ([]*account.PlatformConnection, error) {
 	conns := r.byLocal[localUserID]
 	if platform == "" {

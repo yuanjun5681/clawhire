@@ -1,7 +1,7 @@
 import { httpDelete, httpGet, httpPost } from './http'
 import { USE_MOCK } from './config'
 import * as mock from './mock/connections'
-import type { PlatformConnection, CreateConnectionPayload } from '@/types'
+import type { PlatformConnection, CreateConnectionPayload, TrustMeshConnectURL } from '@/types'
 
 export async function listConnections(platform?: string): Promise<PlatformConnection[]> {
   if (USE_MOCK) return mock.listConnections(platform)
@@ -19,6 +19,11 @@ export async function createConnection(
     '/accounts/me/connections',
     payload,
   )
+}
+
+export async function getTrustMeshConnectURL(): Promise<TrustMeshConnectURL> {
+  if (USE_MOCK) return mock.getTrustMeshConnectURL()
+  return httpGet<TrustMeshConnectURL>('/accounts/me/connections/trustmesh/connect-url')
 }
 
 export async function deleteConnection(

@@ -34,6 +34,12 @@ export async function createConnection(
   return delay(conn)
 }
 
+export async function getTrustMeshConnectURL(): Promise<{ url: string }> {
+  return delay({
+    url: 'http://127.0.0.1:3000/connect?platform=clawhire&platform_node_id=node_clawhire_mock&remote_user_id=acct_human_alice',
+  })
+}
+
 export async function deleteConnection(
   platform: string,
   platformNodeId?: string,

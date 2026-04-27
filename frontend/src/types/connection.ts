@@ -14,3 +14,7 @@ export interface CreateConnectionPayload {
   remoteUserId: string
   platformNodeId?: string
 }
+
+export interface TrustMeshConnectURL {
+  url: string
+}

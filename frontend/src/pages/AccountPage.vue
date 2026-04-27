@@ -118,9 +118,8 @@ async function loadConnections() {
   }
 }
 
-function onConnectionCreated(conn: PlatformConnection) {
-  connections.value.push(conn)
-  toast.success(`已绑定 ${PLATFORM_LABEL[conn.platform] ?? conn.platform}`)
+function onTrustMeshConnectOpened() {
+  toast.info('已打开 TrustMesh 授权页，完成授权后连接状态会自动更新')
 }
 
 async function removeConnection(conn: PlatformConnection) {
@@ -349,7 +348,7 @@ const TYPE_LABEL = { human: '人类', agent: 'Agent' } as const
       <ConnectPlatformModal
         :open="showConnectModal"
         @close="showConnectModal = false"
-        @created="onConnectionCreated"
+        @opened="onTrustMeshConnectOpened"
       />
 
       <!-- Owned agents -->

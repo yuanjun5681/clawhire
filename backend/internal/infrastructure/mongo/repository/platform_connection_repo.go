@@ -8,6 +8,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/account"
 	mgo "github.com/yuanjun5681/clawhire/backend/internal/infrastructure/mongo"
@@ -29,6 +30,37 @@ func (r *PlatformConnectionRepo) Insert(ctx context.Context, conn *account.Platf
 			return account.ErrConnectionExists
 		}
 		return fmt.Errorf("insert platform connection: %w", err)
+	}
+	return nil
+}
+
+func (r *PlatformConnectionRepo) UpsertByLocalUserAndNode(ctx context.Context, conn *account.PlatformConnection) error {
+	if conn.ID.IsZero() {
+		conn.ID = bson.NewObjectID()
+	}
+	conn.LinkedAt = conn.LinkedAt.UTC()
+	if conn.LinkedAt.IsZero() {
+		conn.LinkedAt = time.Now().UTC()
+	}
+	filter := bson.M{
+		"localUserId":    conn.LocalUserID,
+		"platformNodeId": conn.PlatformNodeID,
+	}
+	update := bson.M{
+		"$set": bson.M{
+			"platform":     conn.Platform,
+			"remoteUserId": conn.RemoteUserID,
+			"linkedAt":     conn.LinkedAt,
+		},
+		"$setOnInsert": bson.M{
+			"_id":            conn.ID,
+			"localUserId":    conn.LocalUserID,
+			"platformNodeId": conn.PlatformNodeID,
+		},
+	}
+	_, err := r.coll.UpdateOne(ctx, filter, update, options.UpdateOne().SetUpsert(true))
+	if err != nil {
+		return fmt.Errorf("upsert platform connection: %w", err)
 	}
 	return nil
 }

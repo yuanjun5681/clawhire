@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"context"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -17,19 +19,42 @@ import (
 type Connections struct {
 	connections             account.PlatformConnectionRepository
 	defaultNodeIDByPlatform map[string]string
+	trustMeshWebURL         string
+	selfNodeIDProvider      selfNodeIDProvider
 }
 
-func NewConnections(repo account.PlatformConnectionRepository, defaultNodes map[string]string) *Connections {
+type selfNodeIDProvider interface {
+	GetSelfNodeID(ctx context.Context) (string, error)
+}
+
+type ConnectionOption func(*Connections)
+
+func WithTrustMeshConnect(webURL string, provider selfNodeIDProvider) ConnectionOption {
+	return func(h *Connections) {
+		h.trustMeshWebURL = strings.TrimRight(strings.TrimSpace(webURL), "/")
+		h.selfNodeIDProvider = provider
+	}
+}
+
+func NewConnections(repo account.PlatformConnectionRepository, defaultNodes map[string]string, opts ...ConnectionOption) *Connections {
 	if defaultNodes == nil {
 		defaultNodes = map[string]string{}
 	}
-	return &Connections{connections: repo, defaultNodeIDByPlatform: defaultNodes}
+	h := &Connections{connections: repo, defaultNodeIDByPlatform: defaultNodes}
+	for _, opt := range opts {
+		opt(h)
+	}
+	return h
 }
 
 type createConnectionRequest struct {
 	Platform       string `json:"platform"`
 	RemoteUserID   string `json:"remoteUserId"`
 	PlatformNodeID string `json:"platformNodeId,omitempty"`
+}
+
+type trustMeshConnectURLResponse struct {
+	URL string `json:"url"`
 }
 
 // ListConnections GET /api/accounts/me/connections
@@ -46,6 +71,39 @@ func (h *Connections) ListConnections(c *gin.Context) {
 		list = []*account.PlatformConnection{}
 	}
 	response.OK(c, list)
+}
+
+// TrustMeshConnectURL GET /api/accounts/me/connections/trustmesh/connect-url
+func (h *Connections) TrustMeshConnectURL(c *gin.Context) {
+	accountID := middleware.CurrentAccountID(c)
+	if h.trustMeshWebURL == "" || h.selfNodeIDProvider == nil {
+		response.Fail(c, http.StatusServiceUnavailable, apierr.CodeInternalError, "trustmesh connect is not configured")
+		return
+	}
+
+	clawhireNodeID, err := h.selfNodeIDProvider.GetSelfNodeID(c.Request.Context())
+	if err != nil {
+		response.Fail(c, http.StatusBadGateway, apierr.CodeInternalError, "failed to resolve clawhire node id")
+		return
+	}
+	clawhireNodeID = strings.TrimSpace(clawhireNodeID)
+	if clawhireNodeID == "" {
+		response.Fail(c, http.StatusBadGateway, apierr.CodeInternalError, "empty clawhire node id")
+		return
+	}
+
+	connectURL, err := url.Parse(h.trustMeshWebURL + "/connect")
+	if err != nil || connectURL.Scheme == "" || connectURL.Host == "" {
+		response.Fail(c, http.StatusServiceUnavailable, apierr.CodeInternalError, "invalid trustmesh web url")
+		return
+	}
+	q := connectURL.Query()
+	q.Set("platform", "clawhire")
+	q.Set("platform_node_id", clawhireNodeID)
+	q.Set("remote_user_id", accountID)
+	connectURL.RawQuery = q.Encode()
+
+	response.OK(c, trustMeshConnectURLResponse{URL: connectURL.String()})
 }
 
 // CreateConnection POST /api/accounts/me/connections

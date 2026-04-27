@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -23,6 +24,20 @@ func (r *fakeConnHandlerRepo) Insert(_ context.Context, conn *account.PlatformCo
 	for _, c := range r.items {
 		if c.LocalUserID == conn.LocalUserID && c.PlatformNodeID == conn.PlatformNodeID {
 			return account.ErrConnectionExists
+		}
+	}
+	cp := *conn
+	r.items = append(r.items, &cp)
+	return nil
+}
+
+func (r *fakeConnHandlerRepo) UpsertByLocalUserAndNode(_ context.Context, conn *account.PlatformConnection) error {
+	for _, c := range r.items {
+		if c.LocalUserID == conn.LocalUserID && c.PlatformNodeID == conn.PlatformNodeID {
+			c.Platform = conn.Platform
+			c.RemoteUserID = conn.RemoteUserID
+			c.LinkedAt = conn.LinkedAt
+			return nil
 		}
 	}
 	cp := *conn
@@ -67,9 +82,28 @@ func newConnectionsEngine(repo *fakeConnHandlerRepo, defaults map[string]string)
 	e := gin.New()
 	e.Use(testAuthStub())
 	e.GET("/api/accounts/me/connections", h.ListConnections)
+	e.GET("/api/accounts/me/connections/trustmesh/connect-url", h.TrustMeshConnectURL)
 	e.POST("/api/accounts/me/connections", h.CreateConnection)
 	e.DELETE("/api/accounts/me/connections/:platform", h.DeleteConnection)
 	return e
+}
+
+func newConnectionsEngineWithOptions(repo *fakeConnHandlerRepo, defaults map[string]string, opts ...ConnectionOption) *gin.Engine {
+	gin.SetMode(gin.TestMode)
+	h := NewConnections(repo, defaults, opts...)
+	e := gin.New()
+	e.Use(testAuthStub())
+	e.GET("/api/accounts/me/connections/trustmesh/connect-url", h.TrustMeshConnectURL)
+	return e
+}
+
+type fakeSelfNodeProvider struct {
+	nodeID string
+	err    error
+}
+
+func (p fakeSelfNodeProvider) GetSelfNodeID(_ context.Context) (string, error) {
+	return p.nodeID, p.err
 }
 
 func defaultNodes() map[string]string {
@@ -101,6 +135,61 @@ func TestConnections_List_EmptyReturnsArray(t *testing.T) {
 	}
 	if len(resp.Data) != 0 {
 		t.Fatalf("expected 0 items, got %d", len(resp.Data))
+	}
+}
+
+func TestConnections_TrustMeshConnectURL_ReturnsAuthorizedLink(t *testing.T) {
+	repo := &fakeConnHandlerRepo{}
+	e := newConnectionsEngineWithOptions(
+		repo,
+		defaultNodes(),
+		WithTrustMeshConnect("https://trustmesh.example.com/", fakeSelfNodeProvider{nodeID: "node_clawhire"}),
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/accounts/me/connections/trustmesh/connect-url", nil)
+	req.Header.Set(testAccountHeader, "acct_alice")
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	var resp struct {
+		Data trustMeshConnectURLResponse `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	u, err := url.Parse(resp.Data.URL)
+	if err != nil {
+		t.Fatalf("parse url: %v", err)
+	}
+	if u.Scheme != "https" || u.Host != "trustmesh.example.com" || u.Path != "/connect" {
+		t.Fatalf("unexpected connect url: %s", resp.Data.URL)
+	}
+	q := u.Query()
+	if q.Get("platform") != "clawhire" {
+		t.Errorf("platform = %q", q.Get("platform"))
+	}
+	if q.Get("platform_node_id") != "node_clawhire" {
+		t.Errorf("platform_node_id = %q", q.Get("platform_node_id"))
+	}
+	if q.Get("remote_user_id") != "acct_alice" {
+		t.Errorf("remote_user_id = %q", q.Get("remote_user_id"))
+	}
+}
+
+func TestConnections_TrustMeshConnectURL_NotConfiguredReturns503(t *testing.T) {
+	repo := &fakeConnHandlerRepo{}
+	e := newConnectionsEngineWithOptions(repo, defaultNodes())
+
+	req := httptest.NewRequest(http.MethodGet, "/api/accounts/me/connections/trustmesh/connect-url", nil)
+	req.Header.Set(testAccountHeader, "acct_alice")
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 }
 

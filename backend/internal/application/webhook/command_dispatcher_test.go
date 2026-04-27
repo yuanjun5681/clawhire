@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/yuanjun5681/clawhire/backend/internal/domain/account"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/bid"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/contract"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/event"
@@ -16,6 +17,7 @@ import (
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/shared"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/submission"
 	"github.com/yuanjun5681/clawhire/backend/internal/domain/task"
+	"github.com/yuanjun5681/clawhire/backend/internal/protocol/clawhire"
 	"github.com/yuanjun5681/clawhire/backend/internal/protocol/clawsynapse"
 	"github.com/yuanjun5681/clawhire/backend/internal/shared/apierr"
 )
@@ -385,6 +387,70 @@ func (r *fakeDomainEventRepo) ListByAggregate(_ context.Context, aggType, aggID 
 	}
 	sort.Slice(list, func(i, j int) bool { return list[i].CreatedAt.After(list[j].CreatedAt) })
 	return list, int64(len(list)), nil
+}
+
+type fakePlatformConnectionRepo struct {
+	items []*account.PlatformConnection
+}
+
+func (r *fakePlatformConnectionRepo) Insert(_ context.Context, conn *account.PlatformConnection) error {
+	for _, c := range r.items {
+		if c.LocalUserID == conn.LocalUserID && c.PlatformNodeID == conn.PlatformNodeID {
+			return account.ErrConnectionExists
+		}
+	}
+	cp := *conn
+	r.items = append(r.items, &cp)
+	return nil
+}
+
+func (r *fakePlatformConnectionRepo) UpsertByLocalUserAndNode(_ context.Context, conn *account.PlatformConnection) error {
+	for _, c := range r.items {
+		if c.LocalUserID == conn.LocalUserID && c.PlatformNodeID == conn.PlatformNodeID {
+			c.Platform = conn.Platform
+			c.RemoteUserID = conn.RemoteUserID
+			c.LinkedAt = conn.LinkedAt
+			return nil
+		}
+	}
+	cp := *conn
+	r.items = append(r.items, &cp)
+	return nil
+}
+
+func (r *fakePlatformConnectionRepo) FindByLocalUser(_ context.Context, localUserID, platform string) ([]*account.PlatformConnection, error) {
+	var out []*account.PlatformConnection
+	for _, c := range r.items {
+		if c.LocalUserID != localUserID {
+			continue
+		}
+		if platform != "" && c.Platform != platform {
+			continue
+		}
+		cp := *c
+		out = append(out, &cp)
+	}
+	return out, nil
+}
+
+func (r *fakePlatformConnectionRepo) FindByRemote(_ context.Context, platformNodeID, remoteUserID string) (*account.PlatformConnection, error) {
+	for _, c := range r.items {
+		if c.PlatformNodeID == platformNodeID && c.RemoteUserID == remoteUserID {
+			cp := *c
+			return &cp, nil
+		}
+	}
+	return nil, account.ErrConnectionNotFound
+}
+
+func (r *fakePlatformConnectionRepo) DeleteByLocalUserAndNode(_ context.Context, localUserID, platformNodeID string) error {
+	for i, c := range r.items {
+		if c.LocalUserID == localUserID && c.PlatformNodeID == platformNodeID {
+			r.items = append(r.items[:i], r.items[i+1:]...)
+			return nil
+		}
+	}
+	return account.ErrConnectionNotFound
 }
 
 func TestCommandDispatcher_MinimalLifecycle(t *testing.T) {
@@ -911,6 +977,83 @@ func TestCommandDispatcher_InvalidSettlementStatusFails(t *testing.T) {
 	ae, ok := apierr.As(err)
 	if err == nil || !ok || ae.Code != apierr.CodeInvalidMessagePayload {
 		t.Fatalf("expected invalid payload, got %v", err)
+	}
+}
+
+func TestCommandDispatcher_ConnectionEstablishedUpsertsBinding(t *testing.T) {
+	now := fixedNow(time.Date(2026, 4, 26, 10, 0, 0, 0, time.UTC))
+	connRepo := &fakePlatformConnectionRepo{}
+	dispatcher := NewCommandDispatcher(CommandDispatcherOptions{
+		Connections: connRepo,
+		Now:         now,
+	})
+	env := &clawsynapse.Envelope{
+		Type: clawhire.TypeConnectionEstablished,
+		From: "node_trustmesh_prod",
+		Message: mustJSON(map[string]interface{}{
+			"trustMeshNodeId": "node_trustmesh_prod",
+			"remoteUserId":    "acct_alice",
+			"linkedAt":        "2026-04-26T10:00:00Z",
+		}),
+	}
+
+	if _, err := dispatcher.Dispatch(context.Background(), env); err != nil {
+		t.Fatalf("connection established: %v", err)
+	}
+	if len(connRepo.items) != 1 {
+		t.Fatalf("expected 1 connection, got %d", len(connRepo.items))
+	}
+	conn := connRepo.items[0]
+	if conn.Platform != "trustmesh" || conn.PlatformNodeID != "node_trustmesh_prod" {
+		t.Fatalf("unexpected connection: %+v", conn)
+	}
+	if conn.LocalUserID != "acct_alice" || conn.RemoteUserID != "acct_alice" {
+		t.Fatalf("unexpected user ids: %+v", conn)
+	}
+
+	env.Message = mustJSON(map[string]interface{}{
+		"trustMeshNodeId": "node_trustmesh_prod",
+		"remoteUserId":    "acct_alice",
+		"linkedAt":        "2026-04-26T10:05:00Z",
+	})
+	if _, err := dispatcher.Dispatch(context.Background(), env); err != nil {
+		t.Fatalf("connection established again: %v", err)
+	}
+	if len(connRepo.items) != 1 {
+		t.Fatalf("expected idempotent upsert, got %d connections", len(connRepo.items))
+	}
+}
+
+func TestCommandDispatcher_ConnectionRemovedDeletesBinding(t *testing.T) {
+	connRepo := &fakePlatformConnectionRepo{
+		items: []*account.PlatformConnection{
+			{
+				Platform:       "trustmesh",
+				PlatformNodeID: "node_trustmesh_prod",
+				LocalUserID:    "acct_alice",
+				RemoteUserID:   "acct_alice",
+			},
+		},
+	}
+	dispatcher := NewCommandDispatcher(CommandDispatcherOptions{
+		Connections: connRepo,
+	})
+	env := &clawsynapse.Envelope{
+		Type: clawhire.TypeConnectionRemoved,
+		Message: mustJSON(map[string]interface{}{
+			"trustMeshNodeId": "node_trustmesh_prod",
+			"remoteUserId":    "acct_alice",
+		}),
+	}
+
+	if _, err := dispatcher.Dispatch(context.Background(), env); err != nil {
+		t.Fatalf("connection removed: %v", err)
+	}
+	if len(connRepo.items) != 0 {
+		t.Fatalf("expected connection deleted, got %d", len(connRepo.items))
+	}
+	if _, err := dispatcher.Dispatch(context.Background(), env); err != nil {
+		t.Fatalf("connection removed should be idempotent: %v", err)
 	}
 }
 

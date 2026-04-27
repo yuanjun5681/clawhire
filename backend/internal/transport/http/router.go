@@ -53,6 +53,7 @@ func RegisterRoutes(e *gin.Engine, d Deps) {
 	}
 	if d.Connections != nil {
 		authed.GET("/accounts/me/connections", d.Connections.ListConnections)
+		authed.GET("/accounts/me/connections/trustmesh/connect-url", d.Connections.TrustMeshConnectURL)
 		authed.POST("/accounts/me/connections", d.Connections.CreateConnection)
 		authed.DELETE("/accounts/me/connections/:platform", d.Connections.DeleteConnection)
 	}

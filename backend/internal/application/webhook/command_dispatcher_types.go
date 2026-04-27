@@ -27,6 +27,7 @@ type CommandDispatcher struct {
 	reviews     review.Repository
 	settlements settlement.Repository
 	accounts    account.Repository
+	connections account.PlatformConnectionRepository
 	domainEvts  event.DomainEventRepository
 	sm          task.StateMachine
 	now         Now
@@ -44,6 +45,7 @@ type CommandDispatcherOptions struct {
 	Reviews     review.Repository
 	Settlements settlement.Repository
 	Accounts    account.Repository
+	Connections account.PlatformConnectionRepository
 	DomainEvts  event.DomainEventRepository
 	StateMach   task.StateMachine
 	Commands    *appcmd.Service
@@ -85,24 +87,27 @@ func NewCommandDispatcher(opt CommandDispatcherOptions) *CommandDispatcher {
 		reviews:     opt.Reviews,
 		settlements: opt.Settlements,
 		accounts:    opt.Accounts,
+		connections: opt.Connections,
 		domainEvts:  opt.DomainEvts,
 		sm:          sm,
 		now:         now,
 		commands:    commands,
 	}
 	d.handlers = map[string]commandFunc{
-		clawhire.TypeTaskPosted:         d.handleTaskPosted,
-		clawhire.TypeBidPlaced:          d.handleBidPlaced,
-		clawhire.TypeTaskAwarded:        d.handleTaskAwarded,
-		clawhire.TypeTaskStarted:        d.handleTaskStarted,
-		clawhire.TypeProgressReported:   d.handleProgressReported,
-		clawhire.TypeMilestoneCompleted: d.handleMilestoneCompleted,
-		clawhire.TypeSubmissionCreated:  d.handleSubmissionCreated,
-		clawhire.TypeSubmissionAccepted: d.handleSubmissionAccepted,
-		clawhire.TypeSubmissionRejected: d.handleSubmissionRejected,
-		clawhire.TypeSettlementRecorded: d.handleSettlementRecorded,
-		clawhire.TypeTaskCancelled:      d.handleTaskCancelled,
-		clawhire.TypeTaskDisputed:       d.handleTaskDisputed,
+		clawhire.TypeTaskPosted:            d.handleTaskPosted,
+		clawhire.TypeBidPlaced:             d.handleBidPlaced,
+		clawhire.TypeTaskAwarded:           d.handleTaskAwarded,
+		clawhire.TypeTaskStarted:           d.handleTaskStarted,
+		clawhire.TypeProgressReported:      d.handleProgressReported,
+		clawhire.TypeMilestoneCompleted:    d.handleMilestoneCompleted,
+		clawhire.TypeSubmissionCreated:     d.handleSubmissionCreated,
+		clawhire.TypeSubmissionAccepted:    d.handleSubmissionAccepted,
+		clawhire.TypeSubmissionRejected:    d.handleSubmissionRejected,
+		clawhire.TypeSettlementRecorded:    d.handleSettlementRecorded,
+		clawhire.TypeTaskCancelled:         d.handleTaskCancelled,
+		clawhire.TypeTaskDisputed:          d.handleTaskDisputed,
+		clawhire.TypeConnectionEstablished: d.handleConnectionEstablished,
+		clawhire.TypeConnectionRemoved:     d.handleConnectionRemoved,
 	}
 	return d
 }
