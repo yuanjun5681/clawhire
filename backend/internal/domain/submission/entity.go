@@ -25,6 +25,7 @@ type Submission struct {
 	ContractID   string            `bson:"contractId,omitempty" json:"contractId,omitempty"`
 	Executor     shared.Actor      `bson:"executor"             json:"executor"`
 	Summary      string            `bson:"summary"              json:"summary"`
+	FinalOutput  string            `bson:"finalOutput,omitempty" json:"finalOutput,omitempty"`
 	Artifacts    []shared.Artifact `bson:"artifacts,omitempty"  json:"artifacts,omitempty"`
 	Evidence     *Evidence         `bson:"evidence,omitempty"   json:"evidence,omitempty"`
 	Status       Status            `bson:"status"               json:"status"`

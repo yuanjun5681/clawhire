@@ -31,11 +31,17 @@ func (s *Service) CreateSubmission(ctx context.Context, cmd CreateSubmissionComm
 	if submissionID == "" {
 		submissionID = uuid.New().String()
 	}
+	executor := t.AssignedExecutor
+	if executor == nil {
+		return apierr.New(apierr.CodeInvalidState, "task has no assigned executor")
+	}
 	item := &submission.Submission{
 		SubmissionID: submissionID,
 		TaskID:       payload.TaskID,
 		ContractID:   firstNonEmpty(payload.ContractID, t.CurrentContractID),
+		Executor:     *executor,
 		Summary:      strings.TrimSpace(payload.Summary),
+		FinalOutput:  strings.TrimSpace(payload.FinalOutput),
 		Artifacts:    payload.Artifacts,
 		Evidence:     normalizeEvidence(payload.Evidence),
 		Status:       submission.StatusSubmitted,

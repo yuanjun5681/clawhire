@@ -57,6 +57,7 @@ type createSubmissionRequest struct {
 	ContractID   string             `json:"contractId,omitempty"`
 	Artifacts    []shared.Artifact  `json:"artifacts"`
 	Summary      string             `json:"summary"`
+	FinalOutput  string             `json:"finalOutput,omitempty"`
 	Evidence     *clawhire.Evidence `json:"evidence,omitempty"`
 }
 
@@ -228,11 +229,12 @@ func (h *Write) CreateSubmission(c *gin.Context) {
 	event := h.httpEvent(c, "clawhire.submission.created", fmt.Sprintf("%s:%s", taskID, uuid.New().String()))
 	if err := h.commands.CreateSubmission(c.Request.Context(), appcmd.CreateSubmissionCommand{
 		Payload: clawhire.CreateSubmissionPayload{
-			TaskID:     taskID,
-			ContractID: strings.TrimSpace(req.ContractID),
-			Artifacts:  req.Artifacts,
-			Summary:    req.Summary,
-			Evidence:   req.Evidence,
+			TaskID:      taskID,
+			ContractID:  strings.TrimSpace(req.ContractID),
+			Artifacts:   req.Artifacts,
+			Summary:     req.Summary,
+			FinalOutput: req.FinalOutput,
+			Evidence:    req.Evidence,
 		},
 		Event: event,
 	}); err != nil {

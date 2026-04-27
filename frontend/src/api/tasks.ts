@@ -72,6 +72,7 @@ export interface CreateSubmissionInput {
   submissionId: string
   contractId?: string
   summary: string
+  finalOutput?: string
   artifacts: Array<{
     type: string
     value: string

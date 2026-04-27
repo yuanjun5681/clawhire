@@ -161,7 +161,11 @@ export function normalizeProgress(item: Progress): Progress {
 export function normalizeSubmission(item: Submission): Submission {
   return {
     ...item,
-    executor: normalizeActor(item.executor as unknown as RawActor)!,
+    executor: normalizeActor(item.executor as unknown as RawActor) ?? {
+      id: 'unknown',
+      kind: 'human',
+      name: '未知执行方',
+    },
     artifacts: normalizeArtifacts(item.artifacts as unknown as RawArtifact[]),
     evidence: normalizeEvidence(item.evidence as unknown as RawEvidence),
     status: normalizeSubmissionStatus(item.status),

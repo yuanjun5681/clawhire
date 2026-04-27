@@ -14,6 +14,7 @@ export interface Submission {
   taskId: string
   executor: AccountSummary
   summary: string
+  finalOutput?: string
   artifacts?: ProgressArtifact[]
   evidence?: SubmissionEvidence[]
   status: SubmissionStatus

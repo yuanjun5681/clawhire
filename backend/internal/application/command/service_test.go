@@ -514,6 +514,7 @@ func TestService_CreateSubmissionTransitionsTask(t *testing.T) {
 		TaskID:            "task_001",
 		Status:            task.StatusInProgress,
 		Requester:         shared.Actor{ID: "user_001", Kind: shared.ActorKindUser},
+		AssignedExecutor:  &shared.Actor{ID: "user_002", Kind: shared.ActorKindUser, Name: "Executor"},
 		CurrentContractID: "contract_001",
 	}
 	subRepo := newFakeSubmissionRepo()
@@ -528,9 +529,10 @@ func TestService_CreateSubmissionTransitionsTask(t *testing.T) {
 
 	err := svc.CreateSubmission(context.Background(), CreateSubmissionCommand{
 		Payload: clawhire.CreateSubmissionPayload{
-			TaskID:    "task_001",
-			Summary:   "Landing page delivered",
-			Artifacts: []shared.Artifact{{Type: "url", Value: "https://example.com/result"}},
+			TaskID:      "task_001",
+			Summary:     "Landing page delivered",
+			FinalOutput: "Final copy is ready to publish.",
+			Artifacts:   []shared.Artifact{{Type: "url", Value: "https://example.com/result"}},
 		},
 	})
 	if err != nil {
@@ -550,6 +552,12 @@ func TestService_CreateSubmissionTransitionsTask(t *testing.T) {
 	}
 	if gotSub == nil || gotSub.Status != submission.StatusSubmitted {
 		t.Fatalf("submission status = %v, want %s", gotSub, submission.StatusSubmitted)
+	}
+	if gotSub.FinalOutput != "Final copy is ready to publish." {
+		t.Fatalf("finalOutput = %q", gotSub.FinalOutput)
+	}
+	if gotSub.Executor.ID != "user_002" {
+		t.Fatalf("executor = %+v", gotSub.Executor)
 	}
 }
 

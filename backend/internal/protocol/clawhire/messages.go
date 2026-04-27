@@ -95,6 +95,7 @@ type CreateSubmissionPayload struct {
 	SubmissionID string            `json:"submissionId,omitempty"`
 	ContractID   string            `json:"contractId,omitempty"`
 	Summary      string            `json:"summary"`
+	FinalOutput  string            `json:"finalOutput,omitempty"`
 	Artifacts    []shared.Artifact `json:"artifacts,omitempty"`
 	Evidence     *Evidence         `json:"evidence,omitempty"`
 }

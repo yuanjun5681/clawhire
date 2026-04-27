@@ -499,7 +499,7 @@ func TestWrite_CreateSubmission(t *testing.T) {
 	e.Use(testAuthStub())
 	e.POST("/api/tasks/:taskId/submissions", w.CreateSubmission)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/tasks/task_001/submissions", bytes.NewBufferString(`{"submissionId":"submission_001","summary":"Delivered landing page","artifacts":[{"type":"url","value":"https://example.com/result","label":"Preview"}]}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/tasks/task_001/submissions", bytes.NewBufferString(`{"submissionId":"submission_001","summary":"Delivered landing page","finalOutput":"Final copy is ready to publish.","artifacts":[{"type":"url","value":"https://example.com/result","label":"Preview"}]}`))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set(testAccountHeader, "acct_human_002")
 	rec := httptest.NewRecorder()
@@ -518,6 +518,9 @@ func TestWrite_CreateSubmission(t *testing.T) {
 	}
 	if got.Status != submission.StatusSubmitted {
 		t.Fatalf("submission status = %s, want %s", got.Status, submission.StatusSubmitted)
+	}
+	if got.FinalOutput != "Final copy is ready to publish." {
+		t.Fatalf("finalOutput = %q", got.FinalOutput)
 	}
 }
 

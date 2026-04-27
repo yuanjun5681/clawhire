@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import {
   ApiRequestError,
@@ -16,7 +16,8 @@ import Timeline from '@/components/Timeline.vue'
 import type { TimelineEvent } from '@/components/Timeline.vue'
 import ErrorState from '@/components/ErrorState.vue'
 import AwardModal from '@/components/AwardModal.vue'
-import { UiBadge } from '@/components/ui'
+import SubmitSubmissionModal from '@/components/SubmitSubmissionModal.vue'
+import { UiBadge, UiButton, UiModal } from '@/components/ui'
 import { formatDate, formatDateTime, formatReward } from '@/utils/format'
 import type {
   Bid,
@@ -44,11 +45,63 @@ const reviews = ref<Review[]>([])
 const settlements = ref<Settlement[]>([])
 const actionSubmitting = ref(false)
 const showAwardModal = ref(false)
+const showSubmissionModal = ref(false)
+const showFinalOutputModal = ref(false)
+const refreshing = ref(false)
+const autoRefreshFailed = ref(false)
+const lastRefreshedAt = ref<Date | null>(null)
 
-async function load() {
+let refreshTimer: ReturnType<typeof window.setTimeout> | undefined
+
+const AUTO_REFRESH_TERMINAL_STATUSES = new Set<TaskStatus>([
+  'SETTLED',
+  'CANCELLED',
+  'EXPIRED',
+])
+
+const AUTO_REFRESH_INTERVALS: Partial<Record<TaskStatus, number>> = {
+  OPEN: 15_000,
+  BIDDING: 15_000,
+  AWARDED: 20_000,
+  IN_PROGRESS: 30_000,
+  SUBMITTED: 15_000,
+  ACCEPTED: 15_000,
+  REJECTED: 30_000,
+  DISPUTED: 30_000,
+}
+
+const shouldAutoRefresh = computed(() => {
+  const status = task.value?.status
+  return Boolean(status && !AUTO_REFRESH_TERMINAL_STATUSES.has(status))
+})
+
+function stopAutoRefresh() {
+  if (refreshTimer) window.clearTimeout(refreshTimer)
+  refreshTimer = undefined
+}
+
+function scheduleAutoRefresh() {
+  stopAutoRefresh()
+  if (!shouldAutoRefresh.value || document.visibilityState !== 'visible') return
+
+  const interval = AUTO_REFRESH_INTERVALS[task.value?.status ?? 'OPEN'] ?? 30_000
+  const backoff = autoRefreshFailed.value ? 2 : 1
+  refreshTimer = window.setTimeout(() => {
+    void load({ silent: true })
+  }, interval * backoff)
+}
+
+async function load(options: { silent?: boolean } = {}) {
   if (!taskId.value) return
-  loading.value = true
-  apiError.value = null
+  if (refreshing.value) return
+
+  const silent = Boolean(options.silent)
+  refreshing.value = true
+  if (!silent) {
+    loading.value = true
+    apiError.value = null
+  }
+
   try {
     const [t, b, p, s, r, st] = await Promise.all([
       tasksApi.getTask(taskId.value),
@@ -64,22 +117,49 @@ async function load() {
     submissions.value = s
     reviews.value = r
     settlements.value = st
+    autoRefreshFailed.value = false
+    lastRefreshedAt.value = new Date()
   } catch (e: unknown) {
-    if (e instanceof ApiRequestError) {
-      apiError.value = { message: e.message, code: e.code }
-    } else {
-      apiError.value = {
-        message: e instanceof Error ? e.message : String(e),
+    autoRefreshFailed.value = silent
+    if (!silent) {
+      if (e instanceof ApiRequestError) {
+        apiError.value = { message: e.message, code: e.code }
+      } else {
+        apiError.value = {
+          message: e instanceof Error ? e.message : String(e),
+        }
       }
+      task.value = null
     }
-    task.value = null
   } finally {
-    loading.value = false
+    refreshing.value = false
+    if (!silent) loading.value = false
+    scheduleAutoRefresh()
   }
 }
 
-onMounted(load)
-watch(taskId, load)
+function handleVisibilityChange() {
+  if (document.visibilityState === 'visible') {
+    void load({ silent: true })
+  } else {
+    stopAutoRefresh()
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+  void load()
+})
+
+onBeforeUnmount(() => {
+  stopAutoRefresh()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+})
+
+watch(taskId, () => {
+  stopAutoRefresh()
+  void load()
+})
 
 type ViewerRole = 'requester' | 'executor' | 'reviewer' | 'visitor'
 
@@ -182,6 +262,30 @@ function nextId(prefix: string) {
   return `${prefix}_${Date.now()}`
 }
 
+const latestSubmission = computed(() => submissions.value[0] ?? null)
+
+function submissionStatusLabel(status: Submission['status']) {
+  switch (status) {
+    case 'accepted':
+      return '已通过'
+    case 'rejected':
+      return '已驳回'
+    default:
+      return '待验收'
+  }
+}
+
+function submissionStatusTone(status: Submission['status']) {
+  switch (status) {
+    case 'accepted':
+      return 'success'
+    case 'rejected':
+      return 'error'
+    default:
+      return 'warning'
+  }
+}
+
 async function runAction(key: string) {
   if (!task.value || actionSubmitting.value) return
 
@@ -211,26 +315,8 @@ async function runAction(key: string) {
         return
       }
       case 'submit': {
-        const summary = window.prompt('交付摘要')
-        if (!summary?.trim()) return
-        const artifactUrl = window.prompt('交付链接（可选）')?.trim()
-        const evidenceUrl = window.prompt('证据链接（可选）')?.trim()
-        await tasksApi.createSubmission(currentTask.taskId, {
-          submissionId: nextId('submission'),
-          summary: summary.trim(),
-          artifacts: artifactUrl
-            ? [{ type: 'url', value: artifactUrl, label: 'Preview' }]
-            : [],
-          evidence:
-            evidenceUrl
-              ? {
-                  type: 'url',
-                  items: [evidenceUrl],
-                }
-              : undefined,
-        })
-        toast.success('交付已提交')
-        break
+        showSubmissionModal.value = true
+        return
       }
       case 'approve': {
         if (!latestSubmission) throw new Error('当前没有可验收的提交记录')
@@ -294,6 +380,29 @@ async function handleAward(payload: import('@/api/tasks').AwardTaskInput) {
     actionSubmitting.value = true
     await tasksApi.awardTask(task.value.taskId, payload)
     toast.success('已完成指派')
+    await load()
+  } catch (e: unknown) {
+    toast.error(
+      e instanceof ApiRequestError ? e.message : e instanceof Error ? e.message : '操作失败',
+      '操作失败',
+    )
+  } finally {
+    actionSubmitting.value = false
+  }
+}
+
+async function handleSubmission(
+  payload: Omit<import('@/api/tasks').CreateSubmissionInput, 'submissionId'>,
+) {
+  if (!task.value) return
+  showSubmissionModal.value = false
+  try {
+    actionSubmitting.value = true
+    await tasksApi.createSubmission(task.value.taskId, {
+      submissionId: nextId('submission'),
+      ...payload,
+    })
+    toast.success('交付已提交')
     await load()
   } catch (e: unknown) {
     toast.error(
@@ -386,7 +495,7 @@ const timelineEvents = computed<TimelineEvent[]>(() => {
         ? [
             {
               label: '附件',
-              value: s.artifacts.map((a) => a.name).join('、'),
+              value: `${s.artifacts.length} 个`,
             },
           ]
         : undefined,
@@ -455,6 +564,24 @@ const acceptanceModeLabel = computed(() => {
       return '—'
   }
 })
+
+const refreshStatusLabel = computed(() => {
+  if (!shouldAutoRefresh.value) return '自动刷新已停止'
+  if (refreshing.value && task.value) return '正在刷新'
+  if (autoRefreshFailed.value) return '刷新失败，将稍后重试'
+  if (!lastRefreshedAt.value) return '自动刷新已开启'
+  return `最近更新 ${lastRefreshedAt.value.toLocaleTimeString('zh-CN', {
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })}`
+})
+
+function refreshNow() {
+  stopAutoRefresh()
+  void load({ silent: true })
+}
 </script>
 
 <template>
@@ -473,6 +600,39 @@ const acceptanceModeLabel = computed(() => {
       @close="showAwardModal = false"
       @award="handleAward"
     />
+
+    <SubmitSubmissionModal
+      :open="showSubmissionModal"
+      :submitting="actionSubmitting"
+      @close="showSubmissionModal = false"
+      @submit="handleSubmission"
+    />
+
+    <UiModal
+      :open="showFinalOutputModal"
+      title="交付正文"
+      :description="latestSubmission ? `${latestSubmission.executor?.name ?? '未知执行方'} · ${formatDateTime(latestSubmission.submittedAt)}` : undefined"
+      size="lg"
+      @close="showFinalOutputModal = false"
+    >
+      <div
+        v-if="latestSubmission?.finalOutput"
+        class="max-h-[62vh] overflow-y-auto whitespace-pre-wrap break-words rounded-field border border-base-300/70 bg-base-200/45 p-4 text-sm leading-relaxed text-base-content/80"
+      >
+        {{ latestSubmission.finalOutput }}
+      </div>
+      <p v-else class="text-sm text-base-content/50">暂无交付正文。</p>
+
+      <template #footer>
+        <UiButton
+          variant="ghost"
+          size="sm"
+          @click="showFinalOutputModal = false"
+        >
+          关闭
+        </UiButton>
+      </template>
+    </UiModal>
 
     <div v-if="loading" class="grid grid-cols-1 gap-4 md:grid-cols-12">
       <div class="space-y-4 md:col-span-8">
@@ -560,9 +720,41 @@ const acceptanceModeLabel = computed(() => {
               </svg>
               <h2 class="text-sm font-semibold tracking-tight">事件时间线</h2>
             </div>
-            <span class="text-xs text-base-content/55">
-              共 {{ timelineEvents.length }} 条
-            </span>
+            <div class="flex items-center gap-2">
+              <span
+                class="hidden text-xs text-base-content/55 sm:inline"
+                :class="autoRefreshFailed ? 'text-warning' : ''"
+              >
+                {{ refreshStatusLabel }}
+              </span>
+              <UiButton
+                variant="ghost"
+                size="xs"
+                icon
+                :loading="refreshing"
+                aria-label="刷新任务数据"
+                title="刷新任务数据"
+                @click="refreshNow"
+              >
+                <svg
+                  class="h-3.5 w-3.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                  <path d="M3 21v-5h5" />
+                  <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                  <path d="M16 8h5V3" />
+                </svg>
+              </UiButton>
+              <span class="text-xs text-base-content/55">
+                共 {{ timelineEvents.length }} 条
+              </span>
+            </div>
           </header>
           <Timeline :events="timelineEvents" empty-text="暂无活动记录。" />
         </section>
@@ -641,6 +833,93 @@ const acceptanceModeLabel = computed(() => {
             </li>
           </ul>
           <p v-else class="mt-2 text-xs text-base-content/40">未配置验收规则。</p>
+        </section>
+
+        <section class="rounded-box border border-base-300/70 bg-base-100 p-4">
+          <div class="flex items-center justify-between gap-3">
+            <p class="text-[10.5px] uppercase tracking-[0.12em] text-base-content/55 font-semibold">
+              当前交付
+            </p>
+            <UiBadge
+              v-if="latestSubmission"
+              :tone="submissionStatusTone(latestSubmission.status)"
+              size="xs"
+            >
+              {{ submissionStatusLabel(latestSubmission.status) }}
+            </UiBadge>
+          </div>
+
+          <div v-if="latestSubmission" class="mt-3 space-y-3">
+            <div class="text-xs text-base-content/55">
+              <span>{{ latestSubmission.executor?.name ?? '未知执行方' }}</span>
+              <span class="mx-1 text-base-content/30">·</span>
+              <span>{{ formatDateTime(latestSubmission.submittedAt) }}</span>
+            </div>
+
+            <div>
+              <p class="text-[11px] font-medium text-base-content/45">摘要</p>
+              <p class="mt-1 text-sm leading-relaxed text-base-content/80">
+                {{ latestSubmission.summary }}
+              </p>
+            </div>
+
+            <div v-if="latestSubmission.finalOutput">
+              <div class="flex items-center justify-between gap-2">
+                <p class="text-[11px] font-medium text-base-content/45">交付正文</p>
+                <UiButton
+                  variant="outline"
+                  size="xs"
+                  @click="showFinalOutputModal = true"
+                >
+                  查看
+                </UiButton>
+              </div>
+            </div>
+
+            <div v-if="latestSubmission.artifacts?.length" class="space-y-1.5">
+              <p class="text-[11px] font-medium text-base-content/45">交付物</p>
+              <a
+                v-for="artifact in latestSubmission.artifacts"
+                :key="`${artifact.name}-${artifact.url ?? ''}`"
+                :href="artifact.url"
+                target="_blank"
+                rel="noreferrer"
+                class="flex items-center justify-between gap-2 rounded-field border border-base-300/70 bg-base-200/35 px-3 py-2 text-xs text-base-content/75 transition hover:border-primary/40 hover:text-primary"
+              >
+                <span class="min-w-0 truncate">{{ artifact.name }}</span>
+                <svg
+                  class="h-3.5 w-3.5 shrink-0"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M7 17 17 7" />
+                  <path d="M7 7h10v10" />
+                </svg>
+              </a>
+            </div>
+
+            <div v-if="latestSubmission.evidence?.length" class="space-y-1.5">
+              <p class="text-[11px] font-medium text-base-content/45">验收证据</p>
+              <a
+                v-for="item in latestSubmission.evidence"
+                :key="`${item.name}-${item.url ?? ''}`"
+                :href="item.url"
+                target="_blank"
+                rel="noreferrer"
+                class="block truncate rounded-field border border-base-300/70 bg-base-200/35 px-3 py-2 text-xs text-base-content/70 transition hover:border-primary/40 hover:text-primary"
+              >
+                {{ item.name }}
+              </a>
+            </div>
+          </div>
+
+          <p v-else class="mt-3 text-xs text-base-content/40">
+            暂无交付记录。
+          </p>
         </section>
 
         <div class="space-y-3">

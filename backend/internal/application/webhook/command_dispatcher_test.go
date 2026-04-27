@@ -534,6 +534,7 @@ func TestCommandDispatcher_MinimalLifecycle(t *testing.T) {
 				"taskId":       "task_001",
 				"submissionId": "submission_001",
 				"summary":      "Landing page delivered",
+				"finalOutput":  "Final copy is ready to publish.",
 				"artifacts": []map[string]interface{}{
 					{
 						"type":  "url",
@@ -606,6 +607,9 @@ func TestCommandDispatcher_MinimalLifecycle(t *testing.T) {
 	}
 	if gotSubmission.Status != submission.StatusAccepted {
 		t.Fatalf("submission status = %s, want %s", gotSubmission.Status, submission.StatusAccepted)
+	}
+	if gotSubmission.FinalOutput != "Final copy is ready to publish." {
+		t.Fatalf("finalOutput = %q", gotSubmission.FinalOutput)
 	}
 
 	reviews, _, err := reviewRepo.ListByTask(context.Background(), "task_001", 1, 20)
