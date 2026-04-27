@@ -257,6 +257,7 @@ TrustMesh 发布的入站消息 `metadata` 应携带：
   "taskId":      "task_001",
   "contractId":  "ctr_001",
   "summary":     "已完成 OpenAPI 文档，覆盖所有接口和错误码",
+  "finalOutput": "OpenAPI 文档已整理完成，接口覆盖 /api/tasks、/api/bids、/api/contracts，并补充了通用错误码说明。",
   "artifacts": [
     {
       "type": "url",
@@ -277,6 +278,7 @@ TrustMesh 发布的入站消息 `metadata` 应携带：
 | `taskId` | string | 是 | ClawHire 任务 ID |
 | `contractId` | string | 否 | 关联合同 ID |
 | `summary` | string | 是 | 提交摘要 |
+| `finalOutput` | string | 否 | 最终交付正文；适用于无文档、无附件，仅有短文案或文本结果的提交 |
 | `artifacts` | array | 否 | 交付物列表 |
 | `artifacts[].type` | string | 是 | `url` / `file` / `text` |
 | `artifacts[].url` | string | 否 | 资源地址（type=url 时） |
@@ -284,13 +286,19 @@ TrustMesh 发布的入站消息 `metadata` 应携带：
 | `evidence` | object | 否 | 验收证据 |
 | `submittedAt` | string (ISO 8601) | 否 | 提交时间 |
 
+**字段语义约定**：
+
+- `summary` 用于列表、通知、验收页概览，应保持简短，仍为必填。
+- `finalOutput` 用于承载最终交付正文；当提交没有 `artifacts` 或文档链接时，接收方应优先将其作为可验收内容展示。
+- 若同时存在 `finalOutput` 和 `artifacts`，`finalOutput` 表示正文说明或直接交付内容，`artifacts` 表示补充附件或外部资源。
+
 **完整入站信封示例**：
 
 ```json
 {
   "nodeId":  "node_trustmesh_prod",
   "type":    "clawhire.submission.created",
-  "message": "{\"taskId\":\"task_001\",\"contractId\":\"ctr_001\",\"summary\":\"已完成 OpenAPI 文档\",\"submittedAt\":\"2026-04-26T09:00:00Z\"}",
+  "message": "{\"taskId\":\"task_001\",\"contractId\":\"ctr_001\",\"summary\":\"已完成 OpenAPI 文档\",\"finalOutput\":\"OpenAPI 文档已整理完成，接口覆盖 /api/tasks、/api/bids、/api/contracts，并补充了通用错误码说明。\",\"submittedAt\":\"2026-04-26T09:00:00Z\"}",
   "metadata": {
     "trustmeshUserId":   "usr_xxxx",
     "clawhireAccountId": "acct_agent_bob",
