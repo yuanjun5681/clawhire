@@ -1,6 +1,6 @@
 # 任务测试用例
 
-本文档提供以文案设计等文本生成为主的任务测试用例。
+本文档提供文案设计、图片生成等任务的测试用例。
 
 ---
 
@@ -110,7 +110,7 @@
 |------|-----|
 | **TaskID** | `task_007` |
 | **Title** | 产品功能介绍视频脚本 |
-| **Description** | 撰写一个 60 秒产品功能介绍视频的脚本，包含开场白、功能点讲解、结尾号召，时长分配合理，语言生动易懂。 |
+| **Description** | 撰写一个 60 秒 AI Agent 产品功能介绍视频的脚本，包含开场白、功能点讲解、结尾号召，时长分配合理，语言生动易懂。需要一个 markdown 格式的脚本文件。|
 | **Category** | 文案撰写 |
 | **Status** | `ACCEPTED` |
 | **Requester** | `Actor{ID: "user_alice", Kind: "user", Name: "Alice"}` |
@@ -119,6 +119,108 @@
 | **Reward** | `Reward{Mode: "fixed", Amount: 450.00, Currency: "CNY"}` |
 | **AcceptanceSpec** | `AcceptanceSpec{Mode: "manual"}` |
 | **Deadline** | 2026-05-20 23:59:59 |
+
+---
+
+## 任务八：电商商品主图
+
+| 字段 | 值 |
+|------|-----|
+| **TaskID** | `task_008` |
+| **Title** | 无线耳机电商主图设计 |
+| **Description** | 为新款无线降噪耳机制作 5 张电商主图，尺寸 800x800 像素，白底突出产品，包含核心卖点角标，符合天猫/京东主图规范。 |
+| **Category** | 图片生成 |
+| **Status** | `OPEN` |
+| **Requester** | `Actor{ID: "user_alice", Kind: "user", Name: "Alice"}` |
+| **Reward** | `Reward{Mode: "fixed", Amount: 600.00, Currency: "CNY"}` |
+| **AcceptanceSpec** | `AcceptanceSpec{Mode: "schema", Rules: ["尺寸 800x800", "白底", "JPG/PNG 格式", "5 张数量"]}` |
+| **Deadline** | 2026-05-03 23:59:59 |
+
+---
+
+## 任务九：双十一促销 Banner
+
+| 字段 | 值 |
+|------|-----|
+| **TaskID** | `task_009` |
+| **Title** | 双十一大促首页 Banner 设计 |
+| **Description** | 为电商平台双十一活动设计首页 Banner 一组（PC 端 1920x600、移动端 750x400），主题"狂欢盛典 全场五折"，色调热烈，需突出优惠力度与紧迫感。 |
+| **Category** | 图片生成 |
+| **Status** | `BIDDING` |
+| **Requester** | `Actor{ID: "user_alice", Kind: "user", Name: "Alice"}` |
+| **Reward** | `Reward{Mode: "bid", Amount: 0, Currency: "CNY"}` |
+| **AcceptanceSpec** | `AcceptanceSpec{Mode: "manual"}` |
+| **Deadline** | 2026-05-08 23:59:59 |
+
+---
+
+## 任务十：小红书种草配图
+
+| 字段 | 值 |
+|------|-----|
+| **TaskID** | `task_010` |
+| **Title** | 护肤品小红书种草九宫格 |
+| **Description** | 为新品保湿精华生成小红书种草九宫格图片（9 张，1080x1350 像素），风格清新治愈，含产品特写、使用场景、文字贴纸，适合年轻女性用户群体。 |
+| **Category** | 图片生成 |
+| **Status** | `AWARDED` |
+| **Requester** | `Actor{ID: "user_alice", Kind: "user", Name: "Alice"}` |
+| **AssignedExecutor** | `Actor{ID: "user_bob", Kind: "user", Name: "Bob"}` |
+| **Reward** | `Reward{Mode: "fixed", Amount: 450.00, Currency: "CNY"}` |
+| **AcceptanceSpec** | `AcceptanceSpec{Mode: "schema", Rules: ["9 张图片", "尺寸 1080x1350", "包含产品/场景/文字贴纸三类"]}` |
+| **Deadline** | 2026-05-06 23:59:59 |
+
+---
+
+## 任务十一：品牌推广海报
+
+| 字段 | 值 |
+|------|-----|
+| **TaskID** | `task_011` |
+| **Title** | 新品发布会推广海报 |
+| **Description** | 为新能源汽车新品发布会设计推广海报一张（A3 竖版，300dpi），主题"未来已来"，需融合科技感与未来感，包含品牌 LOGO、发布会时间地点、车型剪影。 |
+| **Category** | 图片生成 |
+| **Status** | `IN_PROGRESS` |
+| **Requester** | `Actor{ID: "user_alice", Kind: "user", Name: "Alice"}` |
+| **AssignedExecutor** | `Actor{ID: "user_carol", Kind: "user", Name: "Carol"}` |
+| **Reward** | `Reward{Mode: "milestone", Amount: 1200.00, Currency: "CNY"}` |
+| **AcceptanceSpec** | `AcceptanceSpec{Mode: "hybrid"}` |
+| **SettlementTerms** | `SettlementTerms{Trigger: "submission_accepted"}` |
+| **Deadline** | 2026-05-18 23:59:59 |
+
+---
+
+## 任务十二：信息流广告素材
+
+| 字段 | 值 |
+|------|-----|
+| **TaskID** | `task_012` |
+| **Title** | 教育课程信息流广告图 |
+| **Description** | 为在线英语课程制作信息流广告素材一组（1080x1080 方图 3 张、1080x1920 竖图 2 张），强调"30 天开口说"卖点，含人物使用场景与价格优惠贴纸。 |
+| **Category** | 图片生成 |
+| **Status** | `SUBMITTED` |
+| **Requester** | `Actor{ID: "user_alice", Kind: "user", Name: "Alice"}` |
+| **AssignedExecutor** | `Actor{ID: "user_dave", Kind: "user", Name: "Dave"}` |
+| **Reward** | `Reward{Mode: "fixed", Amount: 700.00, Currency: "CNY"}` |
+| **AcceptanceSpec** | `AcceptanceSpec{Mode: "test", Rules: ["方图 3 张 1080x1080", "竖图 2 张 1080x1920", "包含价格贴纸"]}` |
+| **Deadline** | 2026-04-30 23:59:59 |
+
+---
+
+## 任务十三：运营活动表情包
+
+| 字段 | 值 |
+|------|-----|
+| **TaskID** | `task_013` |
+| **Title** | 品牌 IP 微信表情包设计 |
+| **Description** | 围绕品牌吉祥物"小爪"设计微信表情包一套（16 个），含问候、加油、吐槽等常用情绪，PNG 透明底，240x240 像素，风格可爱呆萌。 |
+| **Category** | 图片生成 |
+| **Status** | `ACCEPTED` |
+| **Requester** | `Actor{ID: "user_alice", Kind: "user", Name: "Alice"}` |
+| **AssignedExecutor** | `Actor{ID: "user_eve", Kind: "user", Name: "Eve"}` |
+| **Reviewer** | `Actor{ID: "user_alice", Kind: "user", Name: "Alice"}` |
+| **Reward** | `Reward{Mode: "fixed", Amount: 900.00, Currency: "CNY"}` |
+| **AcceptanceSpec** | `AcceptanceSpec{Mode: "schema", Rules: ["16 个表情", "PNG 透明底", "240x240 像素"]}` |
+| **Deadline** | 2026-05-22 23:59:59 |
 
 ---
 
