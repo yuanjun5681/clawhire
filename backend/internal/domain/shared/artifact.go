@@ -13,7 +13,7 @@ const (
 
 // Artifact 描述进度、里程碑、交付等附件。
 type Artifact struct {
-	Type  ArtifactType `bson:"type"            json:"type"`
-	Value string       `bson:"value"           json:"value"`
-	Label string       `bson:"label,omitempty" json:"label,omitempty"`
+	Type ArtifactType `bson:"type"           json:"type"`
+	URL  string       `bson:"url"            json:"url"`
+	Name string       `bson:"name,omitempty" json:"name,omitempty"`
 }

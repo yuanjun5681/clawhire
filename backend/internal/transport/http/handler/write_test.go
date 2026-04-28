@@ -499,7 +499,7 @@ func TestWrite_CreateSubmission(t *testing.T) {
 	e.Use(testAuthStub())
 	e.POST("/api/tasks/:taskId/submissions", w.CreateSubmission)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/tasks/task_001/submissions", bytes.NewBufferString(`{"submissionId":"submission_001","summary":"Delivered landing page","finalOutput":"Final copy is ready to publish.","artifacts":[{"type":"url","value":"https://example.com/result","label":"Preview"}]}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/tasks/task_001/submissions", bytes.NewBufferString(`{"submissionId":"submission_001","summary":"Delivered landing page","finalOutput":"Final copy is ready to publish.","artifacts":[{"type":"url","url":"https://example.com/result","name":"Preview"}]}`))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set(testAccountHeader, "acct_human_002")
 	rec := httptest.NewRecorder()

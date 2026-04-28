@@ -76,6 +76,18 @@ func validateSubmission(p clawhire.CreateSubmissionPayload) error {
 	if strings.TrimSpace(p.Summary) == "" {
 		return apierr.New(apierr.CodeInvalidMessagePayload, "summary is required")
 	}
+	return validateArtifacts(p.Artifacts)
+}
+
+func validateArtifacts(items []shared.Artifact) error {
+	for i, item := range items {
+		if strings.TrimSpace(string(item.Type)) == "" {
+			return apierr.New(apierr.CodeInvalidMessagePayload, fmt.Sprintf("artifacts[%d].type is required", i))
+		}
+		if item.Type == shared.ArtifactTypeURL && strings.TrimSpace(item.URL) == "" {
+			return apierr.New(apierr.CodeInvalidMessagePayload, fmt.Sprintf("artifacts[%d].url is required", i))
+		}
+	}
 	return nil
 }
 

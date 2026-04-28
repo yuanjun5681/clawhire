@@ -532,7 +532,7 @@ func TestService_CreateSubmissionTransitionsTask(t *testing.T) {
 			TaskID:      "task_001",
 			Summary:     "Landing page delivered",
 			FinalOutput: "Final copy is ready to publish.",
-			Artifacts:   []shared.Artifact{{Type: "url", Value: "https://example.com/result"}},
+			Artifacts:   []shared.Artifact{{Type: shared.ArtifactTypeURL, URL: "https://example.com/result", Name: "Result"}},
 		},
 	})
 	if err != nil {

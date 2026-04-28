@@ -345,8 +345,8 @@ MVP 阶段 Human 写接口使用请求头识别当前账号：
   "artifacts": [
     {
       "type": "url",
-      "value": "https://example.com/result",
-      "label": "Preview"
+      "url": "https://example.com/result",
+      "name": "Preview"
     }
   ],
   "evidence": {

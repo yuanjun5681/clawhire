@@ -97,8 +97,8 @@ DomainEvent[]
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | `type` | string | 是 | 附件类型，建议值：`url \| file \| json \| text \| image \| repo` |
-| `value` | string | 是 | 附件值，如 URL、文件 ID、文本引用 |
-| `label` | string | 否 | 展示名称 |
+| `url` | string | 是 | 资源地址或可访问引用 |
+| `name` | string | 否 | 展示名称 |
 
 ---
 

@@ -19,7 +19,7 @@ const emit = defineEmits<{
 const summary = ref('')
 const finalOutput = ref('')
 const artifactUrl = ref('')
-const artifactLabel = ref('')
+const artifactName = ref('')
 const evidenceUrl = ref('')
 
 watch(
@@ -29,7 +29,7 @@ watch(
     summary.value = ''
     finalOutput.value = ''
     artifactUrl.value = ''
-    artifactLabel.value = ''
+    artifactName.value = ''
     evidenceUrl.value = ''
   },
 )
@@ -49,8 +49,8 @@ function submit() {
       ? [
           {
             type: 'url',
-            value: artifact,
-            label: artifactLabel.value.trim() || '交付物',
+            url: artifact,
+            name: artifactName.value.trim() || '交付物',
           },
         ]
       : [],
@@ -96,7 +96,7 @@ function submit() {
           type="url"
         />
         <UiInput
-          v-model="artifactLabel"
+          v-model="artifactName"
           label="链接名称"
           placeholder="交付物"
         />

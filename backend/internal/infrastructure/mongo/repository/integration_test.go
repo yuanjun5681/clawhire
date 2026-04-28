@@ -207,7 +207,7 @@ func TestSubmissionReviewSettlementAccountAndEventRepos_RealMongo(t *testing.T) 
 		TaskID:       "task_001",
 		Executor:     shared.Actor{ID: "agent_007", Kind: shared.ActorKindAgent},
 		Summary:      "done",
-		Artifacts:    []shared.Artifact{{Type: shared.ArtifactTypeURL, Value: "https://example.com"}},
+		Artifacts:    []shared.Artifact{{Type: shared.ArtifactTypeURL, URL: "https://example.com", Name: "Example"}},
 		Status:       submission.StatusSubmitted,
 		SubmittedAt:  now,
 	}

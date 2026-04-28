@@ -20,8 +20,8 @@ type RawActor = {
 
 type RawArtifact = {
   type?: string
-  value?: string
-  label?: string
+  url?: string
+  name?: string
 }
 
 type RawEvidence = {
@@ -45,11 +45,14 @@ export function normalizeActor(actor?: RawActor | null): AccountSummary | undefi
 
 function normalizeArtifacts(artifacts?: RawArtifact[]): Progress['artifacts'] {
   if (!artifacts?.length) return undefined
-  return artifacts.map((item) => ({
-    name: item.label?.trim() || item.value?.trim() || item.type || '附件',
-    url: item.value,
-    type: item.type,
-  }))
+  return artifacts.map((item) => {
+    const url = item.url?.trim()
+    return {
+      name: item.name?.trim() || url || item.type || '附件',
+      url,
+      type: item.type,
+    }
+  })
 }
 
 function normalizeEvidence(evidence?: RawEvidence | null): Submission['evidence'] {

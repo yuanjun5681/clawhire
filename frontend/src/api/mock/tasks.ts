@@ -204,7 +204,7 @@ export async function createSubmission(
     executor: t.assignedExecutor ?? { id: 'unknown', kind: 'human', name: 'Unknown' },
     summary: input.summary,
     finalOutput: input.finalOutput,
-    artifacts: input.artifacts.map((a) => ({ name: a.label ?? a.value, url: a.value })),
+    artifacts: input.artifacts.map((a) => ({ name: a.name ?? a.url, url: a.url })),
     status: 'pending_review',
     submittedAt: new Date().toISOString(),
   })

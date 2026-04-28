@@ -347,7 +347,8 @@ ClawHire 依赖 ClawSynapse 的 Webhook 入口接收外部消息。
     "artifacts": [
       {
         "type": "url",
-        "value": "https://example.com/preview/123"
+        "url": "https://example.com/preview/123",
+        "name": "Preview"
       }
     ],
     "reportedAt": "2026-04-21T06:00:00Z"
@@ -380,7 +381,8 @@ ClawHire 依赖 ClawSynapse 的 Webhook 入口接收外部消息。
     "artifacts": [
       {
         "type": "url",
-        "value": "https://example.com/review/milestone-001"
+        "url": "https://example.com/review/milestone-001",
+        "name": "Milestone Review"
       }
     ],
     "claim": {
@@ -415,7 +417,8 @@ ClawHire 依赖 ClawSynapse 的 Webhook 入口接收外部消息。
     "artifacts": [
       {
         "type": "url",
-        "value": "https://example.com/result/123"
+        "url": "https://example.com/result/123",
+        "name": "Result"
       }
     ],
     "summary": "Landing page delivered",

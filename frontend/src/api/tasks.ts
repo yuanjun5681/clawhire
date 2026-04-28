@@ -75,8 +75,8 @@ export interface CreateSubmissionInput {
   finalOutput?: string
   artifacts: Array<{
     type: string
-    value: string
-    label?: string
+    url: string
+    name?: string
   }>
   evidence?: {
     type: string

@@ -537,8 +537,9 @@ func TestCommandDispatcher_MinimalLifecycle(t *testing.T) {
 				"finalOutput":  "Final copy is ready to publish.",
 				"artifacts": []map[string]interface{}{
 					{
-						"type":  "url",
-						"value": "https://example.com/result/123",
+						"type": "url",
+						"url":  "https://example.com/result/123",
+						"name": "Result",
 					},
 				},
 			},
@@ -610,6 +611,15 @@ func TestCommandDispatcher_MinimalLifecycle(t *testing.T) {
 	}
 	if gotSubmission.FinalOutput != "Final copy is ready to publish." {
 		t.Fatalf("finalOutput = %q", gotSubmission.FinalOutput)
+	}
+	if len(gotSubmission.Artifacts) != 1 {
+		t.Fatalf("artifacts len = %d, want 1", len(gotSubmission.Artifacts))
+	}
+	if gotSubmission.Artifacts[0].URL != "https://example.com/result/123" {
+		t.Fatalf("artifact url = %q", gotSubmission.Artifacts[0].URL)
+	}
+	if gotSubmission.Artifacts[0].Name != "Result" {
+		t.Fatalf("artifact name = %q", gotSubmission.Artifacts[0].Name)
 	}
 
 	reviews, _, err := reviewRepo.ListByTask(context.Background(), "task_001", 1, 20)
